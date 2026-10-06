@@ -434,8 +434,8 @@
     },
     {
       "path": "docs/WINDOWS.md",
-      "bytes": 12967,
-      "sha256": "362937a271c5b387794522a64f1ed583162eef8f4dbb7f69cb604db00611f023"
+      "bytes": 12972,
+      "sha256": "d6c006fe5f79949376bb41417bef1e5544b42be0945beef81605c58d2c5c6ad0"
     },
     {
       "path": "hooks/hooks.json",

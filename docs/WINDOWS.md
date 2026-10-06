@@ -49,6 +49,7 @@ Git Bash를 사용하려는 경우에만 [공식 Windows 설정 안내](https://
 Windows Terminal에서 WSL 배포판 프로필을 열고 그 환경 안에서 실행합니다. WSL을 새로 활성화하거나 시스템 기능을 변경하는 절차는 이 문서 범위에 포함하지 않습니다. Claude Code가 없다면 [공식 Linux/WSL 설치 방법](https://code.claude.com/docs/en/setup#install-claude-code)은 `curl -fsSL https://claude.ai/install.sh | bash`입니다. 설치했다면 새 WSL 탭을 열어 아래 명령을 실행하세요.
 
 ```sh
+cd ~
 git clone --branch main --single-branch https://github.com/b1ueseoyoung/focus-cat-companion.git
 cd focus-cat-companion
 claude --version
