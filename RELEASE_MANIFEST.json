@@ -3,7 +3,7 @@
   "version": "0.6.0",
   "license": "MIT",
   "rightsHolder": "이서영",
-  "runtimeSha256": "ee54062702352ce24215e94ffa42acd30aacda6f1e9d76a6d43e635bc195f6bd",
+  "runtimeSha256": "009261b18fe75aec097757c8f8078308e0c6479aebbaa0b78d81d6c87140c6ba",
   "privacyExclusionsVerified": true,
   "verification": {
     "strictErrors": 0,
@@ -18,7 +18,9 @@
       "platform": "macOS",
       "scope": "Cat motion during actual model replies",
       "agentObserved": false
-    }
+    },
+    "currentTestsPassed": 92,
+    "fullSuiteRepeatedForFix": true
   },
   "files": [
     {
@@ -38,8 +40,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 5191,
-      "sha256": "a442ad1b8dc4951d1c15d0feef78da33c5a82ab1b15fdc29dd17b01e2d2f1038"
+      "bytes": 5223,
+      "sha256": "3cea703b654dd45a7b3604a98b841833752f29912a09b6e11c9e7e2857527284"
     },
     {
       "path": "THIRD_PARTY_NOTICES",
@@ -413,8 +415,8 @@
     },
     {
       "path": "docs/VERIFICATION.md",
-      "bytes": 3311,
-      "sha256": "cdf622c347a6cff3dca845d7cd881c323a81c5bda85108075816092bc62bffd7"
+      "bytes": 3476,
+      "sha256": "bdcc682d291714a822f78dd7726df71ec1794611810d686143b15af77d56023d"
     },
     {
       "path": "hooks/hooks.json",
@@ -423,13 +425,13 @@
     },
     {
       "path": "hooks/integration.js",
-      "bytes": 18075,
-      "sha256": "0fbd61814ea16225647e6c92ccb82a2c31409e5659ca0e9b2fa62dbd4cb92156"
+      "bytes": 18993,
+      "sha256": "286759a16b3c844eb99b86aac95cd4dcf6d314ac6af64acb20cbc0d9d0f70ba0"
     },
     {
       "path": "hooks/register.js",
-      "bytes": 35836,
-      "sha256": "ee54062702352ce24215e94ffa42acd30aacda6f1e9d76a6d43e635bc195f6bd"
+      "bytes": 36754,
+      "sha256": "009261b18fe75aec097757c8f8078308e0c6479aebbaa0b78d81d6c87140c6ba"
     },
     {
       "path": "preview/assets/native-four-row-dance-contact-sheet.png",
@@ -530,6 +532,16 @@
       "path": "tests/reload.test.js",
       "bytes": 18993,
       "sha256": "431bd6fb6af8438eaea65da5f6789359d95c0988609c5dfc03c99caf2306903b"
+    },
+    {
+      "path": "tests/timer-concurrency.test.js",
+      "bytes": 4283,
+      "sha256": "291b1ed4d6cc54afc3704619eb7d72044005e210fca8f0f96d447bc236883403"
+    },
+    {
+      "path": "tests/timer-storage.test.ts",
+      "bytes": 2172,
+      "sha256": "944552ec94a3405c079bcd0a163b7d676c8b76bca25c6673705ad70096d1550b"
     },
     {
       "path": "types/runtime.d.ts",

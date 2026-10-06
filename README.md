@@ -60,7 +60,7 @@ python3 scripts/build-module.py
 python3 scripts/verify-release.py
 claude plugin validate "$PWD" --strict --json
 claude plugin test "$PWD"
-bun test tests/reload.test.js tests/character-selection.test.js tests/pixel-core.test.js tests/dance-core.test.js
+bun test tests/reload.test.js tests/character-selection.test.js tests/pixel-core.test.js tests/dance-core.test.js tests/timer-concurrency.test.js
 ```
 
 검사는 격리된 mock 호스트를 사용합니다. 실제 모델 프롬프트나 사용자 타이머 기록으로 테스트하지 않습니다. 생성되는 호스트 타입과 로컬 검사 출력은 배포물에 포함하지 않습니다.
