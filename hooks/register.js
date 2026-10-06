@@ -156,38 +156,47 @@ function savePreference($,field,value,t=identity()){
 }
 async function claimRuntime($,t=identity()){for(let i=0;i<4;i++){if(!isCurrent(t))return;const previous=await $.state.get({plugin:'focus-cat-companion',key:'companionRuntime',id:t.id});if(!isCurrent(t))return;if(await writeCompanionRuntime($,t,{claim:true,version:previous.version}))return;}throw Error('Companion state changed during reload; try reload again.');}
 function deferredCommit($){if(commitClock)return;const t=identity();commitClock=$.clock.after(1,async()=>{if(!isCurrent(t))return;commitClock=null;if(!claimed)await claimRuntime($,t);else await persistCat($);if(!isCurrent(t)||!claimed)return;syncClocks($);redraw($);});}
-async function saveTimer($,t,valid){
- if(!valid())return false;
- const held={...t.timer,last:t.timer.status==='running'?t.timer.last:0},hs=JSON.stringify(held);
+async function saveTimer($,t,valid,state){
+ if(!valid())return {ok:false,committed:false};
+ const held={...state,last:state.status==='running'?state.last:0},hs=JSON.stringify(held);
  if(hs!==lastHostTimer){
   // Dispatch reads are snapshots. Use the version returned by each write,
   // including a rejected CAS, instead of re-reading a stale dispatch snapshot.
   let written=false;
   for(let attempt=0;attempt<4;attempt++){
-   if(!valid()||(attempt>0&&!await ownsRuntime($,t))||!valid())return false;
+   if(!valid()||(attempt>0&&!await ownsRuntime($,t))||!valid())return {ok:false,committed:false};
    const result=await $.state.set({plugin:'focus-cat-companion',key:'timerRuntime',id:t.id},held,{ifVersion:timerVersion});
-   if(!valid())return false;
+   if(!valid())return {ok:false,committed:result.isSet};
    timerVersion=result.version;
    if(result.isSet){lastHostTimer=hs;written=true;break;}
   }
-  if(!written)return false;
+  if(!written)return {ok:false,committed:false};
  }
- if(!valid()||!await ownsRuntime($,t)||!valid())return false;
- const value=snapshot(t.timer),sig=JSON.stringify(value);
- if(sig!==lastTimer){await $.store.set(t.key,value);if(!valid())return false;lastTimer=sig;}
- return valid();
+ // Publish locally only after the host accepts the staged timer. A rejected
+ // command must remain safe to retry, including non-idempotent next.
+ if(!valid())return {ok:false,committed:true};
+ Object.assign(t.timer,state);cat.visible=state.visible;
+ try{
+  if(!await ownsRuntime($,t)||!valid())return {ok:false,committed:true};
+  const value=snapshot(state),sig=JSON.stringify(value);
+  if(sig!==lastTimer){await $.store.set(t.key,value);if(!valid())return {ok:false,committed:true};lastTimer=sig;}
+  return {ok:valid(),committed:true};
+ }catch{return {ok:false,committed:true};}
 }
 function updateTimer($,update,t=identity()){
  const epoch=timerEpoch,valid=()=>isCurrent(t)&&epoch===timerEpoch;
  const work=timerQueue.catch(()=>{}).then(async()=>{
-  if(!valid())return {ok:false};
+  if(!valid())return {ok:false,committed:false};
   const now=await $.clock.now();
-  if(!valid()||!await ownsRuntime($,t)||!valid())return {ok:false};
-  const message=update(t.timer,now);
-  cat.visible=t.timer.visible;
-  const ok=await saveTimer($,t,valid);
-  if(valid()){syncClocks($);redraw($);}
-  return {ok,message};
+  if(!valid()||!await ownsRuntime($,t)||!valid())return {ok:false,committed:false};
+  const state={...t.timer},message=update(state,now);
+  const result=await saveTimer($,t,valid,state);
+  // A host-committed change survives a later persistence failure. Confirm
+  // ownership again before synchronizing clocks after that partial success.
+  let sync=result.ok;
+  if(!sync&&result.committed&&valid()){try{sync=await ownsRuntime($,t);}catch{}}
+  if(sync&&valid()){syncClocks($);redraw($);}
+  return {...result,message};
  });
  timerQueue=work;return work;
 }
@@ -234,7 +243,7 @@ export function register(on){
  if(action==='character a'||action==='character b'){const t=identity(),character=action.slice(-1);if(!await savePreference($,'character',character,t)||!isCurrent(t))return{text:'Cat preferences changed during reload; run the command again.'};return{text:'Cat character '+character.toUpperCase()+'.'};}
  if(action==='motion on'||action==='motion off'){const t=identity(),reduced=action==='motion off';if(!await savePreference($,'reduced',reduced,t)||!isCurrent(t))return{text:'Cat preferences changed during reload; run the command again.'};return{text:'Cat motion '+(reduced?'off':'on')+'.'};}
  if(!['start','pause','restart','reset','next','show','hide','status'].includes(action))return{text:'Usage: /focus-cat start | pause | restart | reset | next | show | hide | status | character a | character b | character status | motion on | motion off'};
- const result=await updateTimer($,(state,now)=>act(state,action,now));if(!result.ok)return{text:'Timer state changed while saving; run the command again.'};await change($);return{text:result.message||`${clockText(timer)} ${timer.phase} / ${timer.status}; reply ${pose(cat)}`};});
+ const result=await updateTimer($,(state,now)=>act(state,action,now));if(!result.ok)return{text:result.committed?'Timer change was applied, but persistence could not be confirmed; check /focus-cat status before retrying.':'Timer state changed while saving; run the command again.'};await change($);return{text:result.message||`${clockText(timer)} ${timer.phase} / ${timer.status}; reply ${pose(cat)}`};});
  on('ui.render',{component:'AbovePrompt'},async($,e,next)=>{const other=await next(e);if(e.surface!=='terminal')return other;await activate($,true);if(!enabled)return other;
  const held=await $.state.get({plugin:'focus-cat-companion',key:'companionRuntime',id:sessionId});if(held.value?.owner===owner&&held.version>runtimeVersion){restoreCat(held.value);runtimeVersion=held.version;lastCat=JSON.stringify(catData());}
  // AbovePrompt's native core is empty and arrives as an opaque engine ref.

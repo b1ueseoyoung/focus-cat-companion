@@ -3,7 +3,7 @@
   "version": "0.6.0",
   "license": "MIT",
   "rightsHolder": "이서영",
-  "runtimeSha256": "f5e3a471e1728cdf766abff16f347c535ca6ab58033ec7c86043f289d0aeaa52",
+  "runtimeSha256": "381826745922ba9f01fcb47e8b7d067ff7527b900cdc87b26ef30f32623d7ca5",
   "privacyExclusionsVerified": true,
   "verification": {
     "strictErrors": 0,
@@ -19,7 +19,7 @@
       "scope": "Cat motion during actual model replies",
       "agentObserved": false
     },
-    "currentTestsPassed": 97,
+    "currentTestsPassed": 106,
     "fullSuiteRepeatedForFix": true
   },
   "files": [
@@ -415,8 +415,8 @@
     },
     {
       "path": "docs/VERIFICATION.md",
-      "bytes": 4289,
-      "sha256": "78c68f4ace0139116404123b8764a9af08db1126c528944aca54157f62a544b7"
+      "bytes": 4600,
+      "sha256": "b567bf9beb7b64b5ba7c4201383591ce9321fea85a0ded436aa97dfc84dafc41"
     },
     {
       "path": "hooks/hooks.json",
@@ -425,13 +425,13 @@
     },
     {
       "path": "hooks/integration.js",
-      "bytes": 19559,
-      "sha256": "58d8c53b84a5a16313a56a55bce7a776ce530033819919b021a905c8953e4e75"
+      "bytes": 20424,
+      "sha256": "84c802a2194ca1614d6668177a6c7ebc0704a62078054e8f9d4e1cac8b3ed954"
     },
     {
       "path": "hooks/register.js",
-      "bytes": 37320,
-      "sha256": "f5e3a471e1728cdf766abff16f347c535ca6ab58033ec7c86043f289d0aeaa52"
+      "bytes": 38185,
+      "sha256": "381826745922ba9f01fcb47e8b7d067ff7527b900cdc87b26ef30f32623d7ca5"
     },
     {
       "path": "preview/assets/native-four-row-dance-contact-sheet.png",
@@ -535,13 +535,13 @@
     },
     {
       "path": "tests/timer-concurrency.test.js",
-      "bytes": 4283,
-      "sha256": "291b1ed4d6cc54afc3704619eb7d72044005e210fca8f0f96d447bc236883403"
+      "bytes": 9079,
+      "sha256": "479c2c48a884a99ffb80aec93c88d26a2b6142e889178bb5aa4317ce20043393"
     },
     {
       "path": "tests/timer-storage.test.ts",
-      "bytes": 2172,
-      "sha256": "944552ec94a3405c079bcd0a163b7d676c8b76bca25c6673705ad70096d1550b"
+      "bytes": 3954,
+      "sha256": "8223efb3b9bb81cf7c4397fa6ae98d1373a6c490b532a40e00f2baf09f6759b1"
     },
     {
       "path": "types/runtime.d.ts",

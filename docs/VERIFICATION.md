@@ -1,6 +1,6 @@
 # Verification scope — 0.6.0
 
-The original public 0.6.0 archive passed 85 isolated tests. The current source includes timer-storage and cross-session preference concurrency fixes and passes 97 isolated tests on Claude Code 2.1.289 and Bun 1.4.2: 30 official SDK tests and 67 Bun tests, zero failures. Strict validation passed with zero errors/warnings. Test stores, sessions and tool calls use synthetic data; no installed user Mod or user timer records were changed.
+The original public 0.6.0 archive passed 85 isolated tests. The current source includes timer-storage and cross-session preference concurrency fixes and passes 106 isolated tests on Claude Code 2.1.289 and Bun 1.4.2: 32 official SDK tests and 74 Bun tests, zero failures. Strict validation passed with zero errors/warnings. Test stores, sessions and tool calls use synthetic data; no installed user Mod or user timer records were changed.
 
 | Existing test group | Passed | Scope |
 | --- | --- | --- |
@@ -11,10 +11,10 @@ The original public 0.6.0 archive passed 85 isolated tests. The current source i
 | character selection | 18 | A/B persistence, independent-session preference writes in both orders, legacy fallback, invalid-value defaults, reload ownership and timer isolation |
 | pixel core | 15 | PNG oracle, transparency, clipping, walking and boundary turns |
 | dance core | 16 | Fixed face/anchor, eight timing slots, offsets, freeze and 960ms finish |
-| timer concurrency | 5 | Overlapping tick/pause/reset/hide, reload, CAS retry and failure reporting |
-| timer storage SDK | 2 | Rejected versioned writes and subsequent recovery |
+| timer concurrency | 12 | Overlapping tick/pause/reset/hide, reload, CAS retry, rejected-command isolation and partial-commit recovery |
+| timer storage SDK | 4 | Rejected writes, safe next retry and ownership loss after a timer commit |
 
-Runtime entry SHA256: f5e3a471e1728cdf766abff16f347c535ca6ab58033ec7c86043f289d0aeaa52. Timer core SHA256: b964907742df9c9ee1fb04272675e044355058fe2618fe3f6a84c748d54560a0. The timer core and pixel assets are unchanged; the integration serializes timer mutations and storage, checks conditional-write results, and discards obsolete queued work at session boundaries. Character and reduced-motion preferences now use separate persistent keys. Missing keys fall back to their legacy fields without rewriting the legacy record or unknown fields; present invalid values default to character A / motion on. Two independent generated-module instances share only persistent storage in the preference-race regressions, with each write order delayed in turn. Single-module command ordering and reload ownership fences remain covered.
+Runtime entry SHA256: 381826745922ba9f01fcb47e8b7d067ff7527b900cdc87b26ef30f32623d7ca5. Timer core SHA256: b964907742df9c9ee1fb04272675e044355058fe2618fe3f6a84c748d54560a0. The timer core and pixel assets are unchanged; the integration serializes timer mutations and storage, checks conditional-write results, and discards obsolete queued work at session boundaries. Timer commands stage changes until the host accepts them; rejected writes leave the local timer unchanged. If the host committed a change but later persistence fails, the command preserves that change and asks the user to check status before retrying. Character and reduced-motion preferences now use separate persistent keys. Missing keys fall back to their legacy fields without rewriting the legacy record or unknown fields; present invalid values default to character A / motion on. Two independent generated-module instances share only persistent storage in the preference-race regressions, with each write order delayed in turn. Single-module command ordering and reload ownership fences remain covered.
 
 preview/simulated-events-native-raster.png and .gif are actual native Terminal crops, at half Retina backing size, driven by simulated local lifecycle events. They show walking, edge turns, approval hold, resume, a completion dance and static rest. The GIF band is 499×128 and replays a 15.2s demonstration; production dance runs once. Capture sampling is 200ms and does not represent every 120ms dance frame. Asset regeneration and existing core tests cover all eight frames.
 
