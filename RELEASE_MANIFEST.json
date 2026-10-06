@@ -3,7 +3,7 @@
   "version": "0.6.0",
   "license": "MIT",
   "rightsHolder": "이서영",
-  "runtimeSha256": "c5f6238d907a3f2153ba65110a0d05b0af9c25c76d5626696515e0ef0852ba03",
+  "runtimeSha256": "381826745922ba9f01fcb47e8b7d067ff7527b900cdc87b26ef30f32623d7ca5",
   "privacyExclusionsVerified": true,
   "verification": {
     "strictErrors": 0,
@@ -19,7 +19,7 @@
       "scope": "Cat motion during actual model replies",
       "agentObserved": false
     },
-    "currentTestsPassed": 101,
+    "currentTestsPassed": 106,
     "fullSuiteRepeatedForFix": true
   },
   "files": [
@@ -40,8 +40,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 5223,
-      "sha256": "3cea703b654dd45a7b3604a98b841833752f29912a09b6e11c9e7e2857527284"
+      "bytes": 5527,
+      "sha256": "355050f249bb2c1ffd5bec93a82bbde973cb0f3f818eacf2375ec6377fc1136c"
     },
     {
       "path": "THIRD_PARTY_NOTICES",
@@ -415,8 +415,8 @@
     },
     {
       "path": "docs/VERIFICATION.md",
-      "bytes": 3787,
-      "sha256": "f421166aff40b55925633c5b6b98ba5b115f62763070a27a89a86caf22f026ac"
+      "bytes": 4600,
+      "sha256": "b567bf9beb7b64b5ba7c4201383591ce9321fea85a0ded436aa97dfc84dafc41"
     },
     {
       "path": "hooks/hooks.json",
@@ -425,13 +425,13 @@
     },
     {
       "path": "hooks/integration.js",
-      "bytes": 19858,
-      "sha256": "5d7ddf5dfb3020ce2a2ae801452ffdc2a69c2809019db9a842e7444576d5949b"
+      "bytes": 20424,
+      "sha256": "84c802a2194ca1614d6668177a6c7ebc0704a62078054e8f9d4e1cac8b3ed954"
     },
     {
       "path": "hooks/register.js",
-      "bytes": 37619,
-      "sha256": "c5f6238d907a3f2153ba65110a0d05b0af9c25c76d5626696515e0ef0852ba03"
+      "bytes": 38185,
+      "sha256": "381826745922ba9f01fcb47e8b7d067ff7527b900cdc87b26ef30f32623d7ca5"
     },
     {
       "path": "preview/assets/native-four-row-dance-contact-sheet.png",
@@ -500,8 +500,8 @@
     },
     {
       "path": "tests/character-selection.test.js",
-      "bytes": 16389,
-      "sha256": "6bd2824c7c1a62e80d807ecc8aea65686fe59bc41b7875b637ca1ec7b91fadf1"
+      "bytes": 20741,
+      "sha256": "f3984271de547c289f0b8bba960c3a4c4fb34ffcf79c748a21354dc830e37af9"
     },
     {
       "path": "tests/dance-core.test.js",
@@ -515,13 +515,13 @@
     },
     {
       "path": "tests/four-row-raster.test.ts",
-      "bytes": 10189,
-      "sha256": "c7c718aae2f585abbe3b77059941db52f6ab19b564225c7932ed0e0bb2f25a73"
+      "bytes": 10291,
+      "sha256": "ecdfdea9f6ce1f418ebe3a5d5dbd2c38fdda9332bf27b9bf01bf9beb8ec5e8ae"
     },
     {
       "path": "tests/integration.test.ts",
-      "bytes": 11369,
-      "sha256": "4c87f037e917dfd9844b67bee9f2af1e0ca9248d9777fa149d27f091be4b6995"
+      "bytes": 11357,
+      "sha256": "6ec52f9dfd65e7a3e91d7bfef8ea1db58fed73a879b163680d83f308ff2a9f63"
     },
     {
       "path": "tests/pixel-core.test.js",

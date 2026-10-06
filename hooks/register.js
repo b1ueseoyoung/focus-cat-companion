@@ -96,6 +96,7 @@ let timerQueue=Promise.resolve(),timerVersion=0,timerEpoch=0;
 const redraw=$=>$.ui.invalidate('ui.render');
 const selectedCharacter=value=>value==='b'?'b':'a';
 const preferenceRecord=value=>value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+const preferenceKeys={character:'companion:character',reduced:'companion:reduced'};
 const catData=()=>({version:1,owner,turnId:cat.turnId,active:cat.active,reason:cat.reason,waiting:[...cat.waiting],tools:[...cat.tools],x:cat.x,direction:cat.direction,frame:cat.frame,turnHold:cat.turnHold,reduced:cat.reduced,character:selectedCharacter(cat.character),danceActive:cat.danceActive,danceHeld:cat.danceHeld,danceFrame:cat.danceFrame,completionEligible:cat.completionEligible,lastCompletedTurnId:cat.lastCompletedTurnId});
 const identity=()=>({owner,id:sessionId,key:timerKey,timer});
 const isCurrent=t=>enabled&&initialized&&t.owner===owner&&t.id===sessionId&&t.timer===timer;
@@ -125,19 +126,30 @@ function writeCompanionRuntime($,t,{claim=false,version=0,changedOnly=false}={})
 }
 function restoreCat(v,reloading=false){if(!v||v.version!==1||typeof v.active!=='boolean')return;cat.turnId=typeof v.turnId==='string'?v.turnId:null;cat.active=v.active;cat.reason=String(v.reason||'idle');cat.waiting=new Set(Array.isArray(v.waiting)?v.waiting.filter(x=>typeof x==='string'):[]);cat.tools=new Map(Array.isArray(v.tools)?v.tools:[]);cat.x=Number.isFinite(v.x)?Math.max(0,v.x):0;cat.direction=v.direction===-1?-1:1;cat.frame=Number.isInteger(v.frame)&&v.frame>=0&&v.frame<CAT_FRAMES?v.frame:0;cat.turnHold=v.turnHold===1?1:0;cat.reduced=v.reduced===true;cat.character=selectedCharacter(v.character);cat.danceActive=!reloading&&v.danceActive===true;cat.danceHeld=!reloading&&v.danceHeld===true;cat.danceFrame=!reloading&&Number.isInteger(v.danceFrame)&&v.danceFrame>=0&&v.danceFrame<DANCE_FRAMES?v.danceFrame:0;cat.lastCompletedTurnId=typeof v.lastCompletedTurnId==='string'?v.lastCompletedTurnId:null;cat.completionEligible=v.completionEligible===true&&cat.lastCompletedTurnId!==cat.turnId&&(!reloading||cat.active);}
 function persistCat($){const t=identity();queue=queue.catch(()=>{}).then(()=>writeCompanionRuntime($,t,{changedOnly:true}));return queue;}
-function savePreferences($,patch,t=identity()){
+async function restorePreferences($){
+ const legacy=preferenceRecord(await $.store.get('companion:preferences'));
+ const character=await $.store.get(preferenceKeys.character),reduced=await $.store.get(preferenceKeys.reduced);
+ // Read old records without rewriting them: migration writes could race a
+ // command from another session. A present per-field key is authoritative,
+ // even when invalid (A / motion on), and unknown legacy fields stay intact.
+ if(character!==undefined)cat.character=selectedCharacter(character);
+ else if(Object.prototype.hasOwnProperty.call(legacy,'character'))cat.character=selectedCharacter(legacy.character);
+ if(reduced!==undefined)cat.reduced=reduced===true;
+ else if(Object.prototype.hasOwnProperty.call(legacy,'reduced'))cat.reduced=legacy.reduced===true;
+}
+function savePreference($,field,value,t=identity()){
  const work=preferencesQueue.catch(()=>{}).then(async()=>{
   if(!await ownsRuntime($,t))return false;
-  const previous=preferenceRecord(await $.store.get('companion:preferences'));
+  const key=preferenceKeys[field],previous=await $.store.get(key);
   // Fence after the asynchronous read: a replaced owner must not issue a new
   // preference write. An already-issued store.set is not atomically cancelled.
   if(!await ownsRuntime($,t))return false;
-  await $.store.set('companion:preferences',{...previous,...patch});
+  if(previous!==value)await $.store.set(key,value);
   if(!await ownsRuntime($,t))return false;
-  if(Object.prototype.hasOwnProperty.call(patch,'character'))cat.character=selectedCharacter(patch.character);
-  if(typeof patch.reduced==='boolean'){cat.reduced=patch.reduced;if(!cat.reduced&&cat.danceHeld)stopDance(cat);}
-  // Include runtime persistence in the same preference queue so concurrent
-  // character/motion commands retain both merged fields and the final state.
+  if(field==='character')cat.character=selectedCharacter(value);
+  if(field==='reduced'){cat.reduced=value;if(!cat.reduced&&cat.danceHeld)stopDance(cat);}
+  // Keep local runtime changes ordered while different sessions write their
+  // own preference keys without overwriting one another's fields.
   await change($);return isCurrent(t);
  });
  preferencesQueue=work;return work;
@@ -206,7 +218,7 @@ async function activate($,drawing=false){if(initialized)return;if(initializing)r
  sessionId=await $.session.id();timerKey='timer:'+sessionId;const now=await $.clock.now(),saved=await $.store.get(timerKey),record=await $.state.get({plugin:'focus-cat-companion',key:'timerRuntime',id:sessionId}),held=record.value;timerVersion=record.version;
  timer=createState(saved,now);if(held&&held.version===1&&['running','paused','idle','ready'].includes(held.status)){const restored=createState(held,now);if(restored.phase===held.phase&&restored.remaining===held.remaining){timer=restored;timer.status=held.status;if(timer.status==='running'){timer.last=held.last;tick(timer,now);}}}
  lastTimer=saved?JSON.stringify(saved):'';lastHostTimer=held?JSON.stringify(held):'';
- const previous=await $.state.get({plugin:'focus-cat-companion',key:'companionRuntime',id:sessionId});restoreCat(previous.value,true);const prefs=preferenceRecord(await $.store.get('companion:preferences'));if(typeof prefs.reduced==='boolean')cat.reduced=prefs.reduced;cat.character=selectedCharacter(Object.prototype.hasOwnProperty.call(prefs,'character')?prefs.character:cat.character);cat.visible=timer.visible;
+ const previous=await $.state.get({plugin:'focus-cat-companion',key:'companionRuntime',id:sessionId});restoreCat(previous.value,true);await restorePreferences($);cat.visible=timer.visible;
  enabled=true;initialized=true;if(drawing)deferredCommit($);else await claimRuntime($);syncClocks($);
 })();try{await initializing;}finally{initializing=null;}}
 async function change($){const t=identity();if(!claimed)await claimRuntime($,t);if(!await ownsRuntime($,t))return;syncClocks($);await persistCat($);if(isCurrent(t))redraw($);}
@@ -228,8 +240,8 @@ export function register(on){
  on('classic.PermissionDenied',async($,e,next)=>{await activate($);await toolFinished($,e);return next(e);});
  on('command.run',{command:'focus-cat'},async($,e,next)=>{await activate($);if(!enabled)return next(e);const action=e.args.trim().toLowerCase()||'status';
  if(action==='character status')return{text:'Cat character '+selectedCharacter(cat.character).toUpperCase()+'.'};
- if(action==='character a'||action==='character b'){const t=identity(),character=action.slice(-1);if(!await savePreferences($,{character},t)||!isCurrent(t))return{text:'Cat preferences changed during reload; run the command again.'};return{text:'Cat character '+character.toUpperCase()+'.'};}
- if(action==='motion on'||action==='motion off'){const t=identity(),reduced=action==='motion off';if(!await savePreferences($,{reduced},t)||!isCurrent(t))return{text:'Cat preferences changed during reload; run the command again.'};return{text:'Cat motion '+(reduced?'off':'on')+'.'};}
+ if(action==='character a'||action==='character b'){const t=identity(),character=action.slice(-1);if(!await savePreference($,'character',character,t)||!isCurrent(t))return{text:'Cat preferences changed during reload; run the command again.'};return{text:'Cat character '+character.toUpperCase()+'.'};}
+ if(action==='motion on'||action==='motion off'){const t=identity(),reduced=action==='motion off';if(!await savePreference($,'reduced',reduced,t)||!isCurrent(t))return{text:'Cat preferences changed during reload; run the command again.'};return{text:'Cat motion '+(reduced?'off':'on')+'.'};}
  if(!['start','pause','restart','reset','next','show','hide','status'].includes(action))return{text:'Usage: /focus-cat start | pause | restart | reset | next | show | hide | status | character a | character b | character status | motion on | motion off'};
  const result=await updateTimer($,(state,now)=>act(state,action,now));if(!result.ok)return{text:result.committed?'Timer change was applied, but persistence could not be confirmed; check /focus-cat status before retrying.':'Timer state changed while saving; run the command again.'};await change($);return{text:result.message||`${clockText(timer)} ${timer.phase} / ${timer.status}; reply ${pose(cat)}`};});
  on('ui.render',{component:'AbovePrompt'},async($,e,next)=>{const other=await next(e);if(e.surface!=='terminal')return other;await activate($,true);if(!enabled)return other;
