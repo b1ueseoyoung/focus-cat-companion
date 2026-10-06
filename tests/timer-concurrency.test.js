@@ -1,7 +1,7 @@
 import {test,expect} from 'bun:test';
 import {resolve} from 'node:path';
+import {freshModule} from './helpers/fresh-module.js';
 import {AsyncLocalStorage} from 'node:async_hooks';
-let loadId=0;
 const gate=()=>{let enter,release;return {entered:new Promise(r=>enter=r),released:new Promise(r=>release=r),enter:()=>enter(),release:()=>release()};};
 function host(){
  const saved=new Map([['timer:synthetic',{version:1,phase:'focus',remaining:60000,completed:0,status:'paused',motion:0,visible:true}]]),runtime=new Map(),clocks=new Map(),reads=new AsyncLocalStorage();
@@ -19,7 +19,7 @@ function host(){
   }},
   clock:{now:async()=>now,every:(ms,fn)=>{const key=++id;clocks.set(key,{ms,fn});return {cancel:()=>clocks.delete(key)};},after:()=>({cancel(){}})},ui:{invalidate(){}}};
  const fire=(name,e={})=>reads.run(new Map(),()=>hooks.get(name)($,e,async()=>({})));
- async function load(){clocks.clear();hooks=new Map();const m=await import(resolve(process.env.REVIEW_REPO||resolve(import.meta.dir,'..'),'hooks/register.js')+'?timer-test='+ ++loadId);m.register((name,...args)=>hooks.set(name,args.at(-1)));await fire('session.start');}
+ async function load(){clocks.clear();hooks=new Map();const m=await freshModule(resolve(process.env.REVIEW_REPO||resolve(import.meta.dir,'..'),'hooks/register.js'));m.register((name,...args)=>hooks.set(name,args.at(-1)));await fire('session.start');}
  return {load,fire,command:args=>fire('command.run',{args}),runtime,saved,clocks,setNow:n=>now=n,blockWrite(){return nextWrite=gate();},conflict:n=>conflicts=n,failNextStore:()=>failStore=true,loseOwnerAfterTimerWrite:()=>loseOwner=true,onRead:fn=>nextRead=fn,tick(){const c=[...clocks.values()].find(c=>c.ms===1000);return reads.run(new Map(),()=>c.fn());}};
 }
 for(const action of ['pause','reset','hide'])test(`a pending tick cannot overwrite ${action} or its reload state`,async()=>{

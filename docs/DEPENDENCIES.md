@@ -2,9 +2,10 @@
 
 | Component | Use | Bundled? |
 | --- | --- | --- |
-| Claude Code 2.1.289 | Verified Mod host, official mock tests and terminal Raster | No |
+| Claude Code 2.1.289 / 2.1.290 | Verified Mod host, official mock tests and terminal Raster | No |
 | Bun 1.4.2 | Pure core, reload and selection tests | No |
-| Python 3.9.6 / 3.12.14 | Standard-library module and integrity scripts | No |
+| Python 3.9.6 / 3.12.14 | Original standard-library module and integrity scripts | No |
+| Python 3.10+ (CI 3.12; local 3.14.8) | Portable check runner and filesystem/encoding regressions | No |
 | Pillow 12.3.0 | Optional offline frame/raster generation | No |
 
 hooks/register.js is self-contained and has no runtime imports. It uses only host command, session, store, state, clock and UI APIs. It observes lifecycle events and forwards normal results. It does not call a model, launch a process, select model/effort, read an account file or send network traffic. The host's own service behavior is separate.

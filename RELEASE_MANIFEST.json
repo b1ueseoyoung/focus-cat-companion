@@ -19,14 +19,28 @@
       "scope": "Cat motion during actual model replies",
       "agentObserved": false
     },
-    "currentTestsPassed": 124,
-    "fullSuiteRepeatedForFix": true
+    "currentTestsPassed": 127,
+    "fullSuiteRepeatedForFix": true,
+    "platformPythonTests": 5,
+    "windowsInteractiveVerified": false,
+    "wslInteractiveVerified": false,
+    "localWindowsPortabilityHost": "macOS; Claude Code 2.1.290, Bun 1.4.2, Python 3.14.8"
   },
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
       "bytes": 282,
       "sha256": "509aaf24b916c2953f8c6bc0ee7281441c8419911eee5051743ec012990ed287"
+    },
+    {
+      "path": ".gitattributes",
+      "bytes": 117,
+      "sha256": "efd7fa2f566af9ecda0197cf1742b1e824c163a4dca325b6d0400741d9b178a8"
+    },
+    {
+      "path": ".github/workflows/platform-checks.yml",
+      "bytes": 1233,
+      "sha256": "a6b2f253679fa6c2d1791173fbeb59dec7d4b4f7613fa59273d1915bf16623a3"
     },
     {
       "path": ".gitignore",
@@ -40,8 +54,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 6231,
-      "sha256": "288ae31ab08d8cf89751c83bd24aa45f3e53638bbe1bc93d2c5e4cf8cc7f0095"
+      "bytes": 9381,
+      "sha256": "6f9b3e0834e09ae2661a961d56f394c637000d7692e687a199fb6f3539637cc7"
     },
     {
       "path": "THIRD_PARTY_NOTICES",
@@ -410,13 +424,18 @@
     },
     {
       "path": "docs/DEPENDENCIES.md",
-      "bytes": 1100,
-      "sha256": "34fe39e173e6ebbcd64c71f818d50fb314595dba3d9426dab920c904f398f345"
+      "bytes": 1225,
+      "sha256": "a18cad84281f78a0ee1ab8ef71d54ba825a8e77b17fdb616291c8deedbb81cbe"
     },
     {
       "path": "docs/VERIFICATION.md",
-      "bytes": 5336,
-      "sha256": "1b912b2dfe906cc8e79756663c95d4027fd9b483394221f8966456476245f008"
+      "bytes": 7805,
+      "sha256": "03e2d0bb7c013a037ac78d62e364314a84bd86715ff8d5dc6d70c89b2b91ba1e"
+    },
+    {
+      "path": "docs/WINDOWS.md",
+      "bytes": 12972,
+      "sha256": "d6c006fe5f79949376bb41417bef1e5544b42be0945beef81605c58d2c5c6ad0"
     },
     {
       "path": "hooks/hooks.json",
@@ -470,13 +489,18 @@
     },
     {
       "path": "scripts/build-native-four-row-frames.py",
-      "bytes": 12195,
-      "sha256": "dee38fc145e821c7c2e2a5530ab4b8860bcec480fd74da3fbd7864d9ba5c9c44"
+      "bytes": 12350,
+      "sha256": "9bf38e5ad1b3b526d4804c814bf970ecb3195a26c19280bd44ceb5a03ce65336"
     },
     {
       "path": "scripts/build-native-raster.py",
-      "bytes": 2482,
-      "sha256": "b573a66eb702c32bb23caa1ee1e9c0afde4f754a4e6bcd17737e7576daa31b96"
+      "bytes": 2546,
+      "sha256": "4e253123626e0b5bc4ddacf84f14ff72b96218a1483bf2e1534d1631ca98e99a"
+    },
+    {
+      "path": "scripts/check-platform.py",
+      "bytes": 4677,
+      "sha256": "4c256fd270ccc447672b985ea26fa9d4b39ae8e0982faec93e3daefe6a0180c4"
     },
     {
       "path": "scripts/verify-release.py",
@@ -524,6 +548,11 @@
       "sha256": "ecdfdea9f6ce1f418ebe3a5d5dbd2c38fdda9332bf27b9bf01bf9beb8ec5e8ae"
     },
     {
+      "path": "tests/helpers/fresh-module.js",
+      "bytes": 529,
+      "sha256": "d4b676a36f6dca4d0b7f4a192a651ddd8cb7438dfa217dcb92f79159408d3b58"
+    },
+    {
       "path": "tests/integration.test.ts",
       "bytes": 11357,
       "sha256": "6ec52f9dfd65e7a3e91d7bfef8ea1db58fed73a879b163680d83f308ff2a9f63"
@@ -534,14 +563,24 @@
       "sha256": "960f236558373a903193733efefb2c3cc91d4e6e48243fb0b41544c30195d907"
     },
     {
+      "path": "tests/platform.test.js",
+      "bytes": 1306,
+      "sha256": "269f76797ea79c35785326ecf43cd736ddcc9eeddb1aa7c1a5e242c9791692f6"
+    },
+    {
       "path": "tests/reload.test.js",
-      "bytes": 27075,
-      "sha256": "161ca5283ece3e207f4f72681006b149509165f03a7e1cdb71ca5406a6ccce97"
+      "bytes": 30343,
+      "sha256": "d438133046107e311a0b29f24351a92889eefbc487b2f4755ccb2558c6ea5e0f"
+    },
+    {
+      "path": "tests/test_platform.py",
+      "bytes": 3856,
+      "sha256": "72c1a147b655ae3f4f9324d48c894e09c4c285b9aacb6c7e5153e73745b61fac"
     },
     {
       "path": "tests/timer-concurrency.test.js",
-      "bytes": 9079,
-      "sha256": "479c2c48a884a99ffb80aec93c88d26a2b6142e889178bb5aa4317ce20043393"
+      "bytes": 9100,
+      "sha256": "dbcda06a3316ec9c0adfc2fd45964ec28764856c8d8b8c06bfce62c44734d164"
     },
     {
       "path": "tests/timer-storage.test.ts",
