@@ -54,8 +54,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 6570,
-      "sha256": "72509215136160ec76470617b2a282b75636d2d41a7ca447a70116dc30c17fc9"
+      "bytes": 9456,
+      "sha256": "9f3da72fe964b743c924084bd68266de08b07ef8e91fcf4f88220f78f93d6b14"
     },
     {
       "path": "THIRD_PARTY_NOTICES",
@@ -434,8 +434,8 @@
     },
     {
       "path": "docs/WINDOWS.md",
-      "bytes": 12492,
-      "sha256": "589d077cfdf637bd5f726d418eae4bd608711c3b671048eed9175fd5448f88b6"
+      "bytes": 12939,
+      "sha256": "758f8dd5ee211ea711e2ddcab35ba6d29eb8e1bc7219359fd41845d73aca5ad0"
     },
     {
       "path": "hooks/hooks.json",

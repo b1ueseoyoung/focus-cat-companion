@@ -13,12 +13,50 @@ cd focus-cat-companion
 claude --plugin-dir "$PWD"
 ```
 
-Windows Terminal의 PowerShell에서는 저장소 폴더에서 다음을 실행하세요. native Windows와 WSL의 설치·경로 차이, 개발 검사와 미완료 수동 검증은 [Windows 안내](docs/WINDOWS.md)에 있습니다.
+## Windows에서 실행
 
-```powershell
-$pluginDir = (Get-Location).Path
-claude --plugin-dir "$pluginDir"
+**검증 상태:** Windows Server 2025·macOS 15·Ubuntu 24.04의 [CI](https://github.com/b1ueseoyoung/focus-cat-companion/actions/runs/37415223737)에서 commit `c2bc87e`의 Bun 87개 + Python 5개 검사가 통과했습니다. **실제 Windows 10/11·WSL의 Claude 화면, 모델 응답·승인, 설정 재실행은 아직 미검증**입니다. 아래는 Windows 검토본 [draft PR #7](https://github.com/b1ueseoyoung/focus-cat-companion/pull/7)의 실행 방법이며, 병합·릴리스된 Windows 완성본을 뜻하지 않습니다.
+
+### Windows Terminal + PowerShell
+
+1. Windows 10 2004/build 19041 이상 또는 Windows 11에서 [Windows Terminal](https://learn.microsoft.com/en-us/windows/terminal/install)을 준비하고 PowerShell 탭을 엽니다. [Claude Code 공식 Windows 안내](https://code.claude.com/docs/en/setup#set-up-on-windows)에 따라 설치합니다. Claude Code 자체의 공식 최소 요구사항은 Windows 10 1809+, x64/ARM64, RAM 4GB 이상입니다. 이미 설치했다면 이 명령은 건너뜁니다.
+
+   ```powershell
+   irm https://claude.ai/install.ps1 | iex
+   ```
+
+2. 새 PowerShell 탭에서 설치를 확인하고 Windows 검토 브랜치를 내려받아 실행합니다. 아래 Git 명령에는 Git이 필요하지만, Claude Code 자체에서 Git Bash는 선택 사항입니다. Git이 없다면 [검토 브랜치 ZIP](https://github.com/b1ueseoyoung/focus-cat-companion/archive/refs/heads/feat/windows-terminal-support.zip)을 풀어 해당 폴더에서 마지막 두 줄을 실행하세요.
+
+   ```powershell
+   claude --version
+   claude doctor
+   git clone --branch feat/windows-terminal-support --single-branch https://github.com/b1ueseoyoung/focus-cat-companion.git
+   Set-Location -LiteralPath '.\focus-cat-companion'
+   $pluginDir = (Get-Location).Path
+   claude --plugin-dir "$pluginDir"
+   ```
+
+3. 기존 Claude Code 접근 권한으로 시작한 뒤 `/focus-cat status`를 입력해 로딩을 확인합니다. `/focus-cat character a` 또는 `b`로 고양이를 선택할 수 있습니다. 사용만 할 때 Python·Bun·Pillow는 필요 없습니다. 이 Mod는 hooks module·Raster API가 있는 호스트가 필요하며 [검사한 버전](docs/DEPENDENCIES.md)과 실제 Windows 호환성은 구분합니다.
+
+### 이미 준비된 WSL
+
+Windows Terminal에서 Linux 배포판 탭을 열고 **WSL 안에 Linux용 Claude Code를 설치**합니다. Windows의 `claude.exe`와 `C:\...` 경로를 이 명령에 섞지 않습니다. Claude Code가 없다면 먼저 설치합니다.
+
+```sh
+curl -fsSL https://claude.ai/install.sh | bash
 ```
+
+새 WSL 탭에서 설치를 확인한 뒤 Linux 홈 디렉터리에 내려받아 실행합니다.
+
+```sh
+claude --version
+cd ~
+git clone --branch feat/windows-terminal-support --single-branch https://github.com/b1ueseoyoung/focus-cat-companion.git
+cd focus-cat-companion
+claude --plugin-dir "$PWD"
+```
+
+native Windows와 WSL의 설치·저장 환경은 별개이며 설정이 자동 공유된다고 가정하지 마세요. 상세 요구사항, 경로·인코딩 문제, 자동 검사 명령과 미완료 수동 체크리스트는 [Windows 안내](docs/WINDOWS.md)에 있습니다.
 
 이미 이 Mod를 불러온 세션에서는 `/reload-plugins`로 변경을 적용합니다. Mac에서 검사한 호스트는 Claude Code 2.1.289 / 2.1.290입니다. 실행에 별도의 서버나 이미지 생성 서비스는 필요하지 않습니다.
 
