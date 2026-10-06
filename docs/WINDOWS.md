@@ -2,7 +2,7 @@
 
 이 Mod는 Claude Code의 터미널 UI와 저장 API를 사용합니다. Windows용 별도 실행 파일은 없으며 같은 `hooks/register.js`를 불러옵니다. 개발을 수행한 대화형 환경은 macOS뿐입니다. **Windows Terminal에서 실제 모델 답변·승인·설정 재실행을 직접 확인하지 않았습니다.** 자동 검사와 아래 수동 검증을 구분하고, 검사 결과는 실행한 정확한 commit에 한해 해석하세요. 기존 검증 범위는 [VERIFICATION](VERIFICATION.md)을 참조하세요.
 
-현재 Windows 검토본은 [draft PR #7](https://github.com/b1ueseoyoung/focus-cat-companion/pull/7)의 `feat/windows-terminal-support` 브랜치입니다. 아래 clone 명령은 이 브랜치를 선택합니다. ZIP도 같은 브랜치에서 내려받으세요.
+Windows 호환성 변경과 commit별 검사 결과는 [PR #7](https://github.com/b1ueseoyoung/focus-cat-companion/pull/7)에서 확인하세요. 아래 clone 명령은 `main`을 선택합니다. Git 없이 설치하려면 [main ZIP](https://github.com/b1ueseoyoung/focus-cat-companion/archive/refs/heads/main.zip)을 내려받아 풉니다.
 
 공식 설치 문서 확인일: 2026-10-06. 호스트의 플랫폼 지원이 이 Mod의 실제 Windows 렌더링 검증을 대신하지는 않습니다.
 
@@ -34,7 +34,7 @@ WSL에서는 Linux 파일 시스템에, PowerShell에서는 Windows 파일 시�
 4. GitHub ZIP을 풀거나, Git이 이미 설치되어 있다면 다음으로 저장소를 내려받습니다.
 
    ```powershell
-   git clone --branch feat/windows-terminal-support --single-branch https://github.com/b1ueseoyoung/focus-cat-companion.git
+   git clone --branch main --single-branch https://github.com/b1ueseoyoung/focus-cat-companion.git
    Set-Location -LiteralPath '.\focus-cat-companion'
    $pluginDir = (Get-Location).Path
    claude --plugin-dir "$pluginDir"
@@ -49,7 +49,7 @@ Git Bash를 사용하려는 경우에만 [공식 Windows 설정 안내](https://
 Windows Terminal에서 WSL 배포판 프로필을 열고 그 환경 안에서 실행합니다. WSL을 새로 활성화하거나 시스템 기능을 변경하는 절차는 이 문서 범위에 포함하지 않습니다. Claude Code가 없다면 [공식 Linux/WSL 설치 방법](https://code.claude.com/docs/en/setup#install-claude-code)은 `curl -fsSL https://claude.ai/install.sh | bash`입니다. 설치했다면 새 WSL 탭을 열어 아래 명령을 실행하세요.
 
 ```sh
-git clone --branch feat/windows-terminal-support --single-branch https://github.com/b1ueseoyoung/focus-cat-companion.git
+git clone --branch main --single-branch https://github.com/b1ueseoyoung/focus-cat-companion.git
 cd focus-cat-companion
 claude --version
 claude --plugin-dir "$PWD"

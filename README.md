@@ -15,7 +15,7 @@ claude --plugin-dir "$PWD"
 
 ## Windows에서 실행
 
-**검증 상태:** Windows Server 2025·macOS 15·Ubuntu 24.04의 [CI](https://github.com/b1ueseoyoung/focus-cat-companion/actions/runs/37415223737)에서 commit `c2bc87e`의 Bun 87개 + Python 5개 검사가 통과했습니다. **실제 Windows 10/11·WSL의 Claude 화면, 모델 응답·승인, 설정 재실행은 아직 미검증**입니다. 아래는 Windows 검토본 [draft PR #7](https://github.com/b1ueseoyoung/focus-cat-companion/pull/7)의 실행 방법이며, 병합·릴리스된 Windows 완성본을 뜻하지 않습니다.
+**검증 상태:** Windows Server 2025·macOS 15·Ubuntu 24.04의 [CI](https://github.com/b1ueseoyoung/focus-cat-companion/actions/runs/37416405335)에서 commit `33139e4`의 Bun 87개 + Python 5개 검사가 통과했습니다. **실제 Windows 10/11·WSL의 Claude 화면, 모델 응답·승인, 설정 재실행은 아직 미검증**입니다. 아래 절차는 `main` 소스를 실행합니다. Windows 호환성 변경과 commit별 자동 검사 결과는 [PR #7](https://github.com/b1ueseoyoung/focus-cat-companion/pull/7)에서 확인할 수 있습니다.
 
 ### Windows Terminal + PowerShell
 
@@ -25,12 +25,12 @@ claude --plugin-dir "$PWD"
    irm https://claude.ai/install.ps1 | iex
    ```
 
-2. 새 PowerShell 탭에서 설치를 확인하고 Windows 검토 브랜치를 내려받아 실행합니다. 아래 Git 명령에는 Git이 필요하지만, Claude Code 자체에서 Git Bash는 선택 사항입니다. Git이 없다면 [검토 브랜치 ZIP](https://github.com/b1ueseoyoung/focus-cat-companion/archive/refs/heads/feat/windows-terminal-support.zip)을 풀어 해당 폴더에서 마지막 두 줄을 실행하세요.
+2. 새 PowerShell 탭에서 설치를 확인하고 `main` 소스를 내려받아 실행합니다. 아래 Git 명령에는 Git이 필요하지만, Claude Code 자체에서 Git Bash는 선택 사항입니다. Git이 없다면 [main ZIP](https://github.com/b1ueseoyoung/focus-cat-companion/archive/refs/heads/main.zip)을 풀어 해당 폴더에서 마지막 두 줄을 실행하세요.
 
    ```powershell
    claude --version
    claude doctor
-   git clone --branch feat/windows-terminal-support --single-branch https://github.com/b1ueseoyoung/focus-cat-companion.git
+   git clone --branch main --single-branch https://github.com/b1ueseoyoung/focus-cat-companion.git
    Set-Location -LiteralPath '.\focus-cat-companion'
    $pluginDir = (Get-Location).Path
    claude --plugin-dir "$pluginDir"
@@ -51,7 +51,7 @@ curl -fsSL https://claude.ai/install.sh | bash
 ```sh
 claude --version
 cd ~
-git clone --branch feat/windows-terminal-support --single-branch https://github.com/b1ueseoyoung/focus-cat-companion.git
+git clone --branch main --single-branch https://github.com/b1ueseoyoung/focus-cat-companion.git
 cd focus-cat-companion
 claude --plugin-dir "$PWD"
 ```
