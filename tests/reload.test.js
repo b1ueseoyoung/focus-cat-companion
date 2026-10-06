@@ -116,3 +116,64 @@ test('a previous dance callback held inside CAS cannot advance the next complete
  expect(h.companion().turnId).toBe('new-dance');expect(h.companion().lastCompletedTurnId).toBe('new-dance');expect(h.companion().danceActive).toBe(true);expect(h.companion().danceFrame).toBe(0);
  expect([...h.timers.values()].map(clock=>clock.ms)).toEqual([120]);await h.advance(960);expect(h.companion().danceActive).toBe(false);expect(h.timers.size).toBe(0);
 });
+
+async function approvalTool(h,id,input,initial=input){
+ let enter,release;const entered=new Promise(resolve=>enter=resolve),result=new Promise(resolve=>release=resolve);
+ const pending=h.fire('tool.call',{tool:'Bash',tool_use_id:id,...initial},async()=>{await h.fire('tool.check',{tool:'Bash',tool_use_id:id,input},async()=>({decision:'ask'}));enter();return result;});
+ await entered;return{pending,release};
+}
+for(const first of ['prompted','unprompted'])test('distinct-input same-name calls clear only their own approval when '+first+' finishes first',async()=>{
+ const h=host();await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'parallel'});await h.render(true);
+ const a=await approvalTool(h,'unprompted',{command:'synthetic long'}),b=await approvalTool(h,'prompted',{command:'synthetic short'});
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{command:'synthetic short'}});
+ expect(h.companion().approvals[0].ids).toEqual(['prompted']);
+ await h.fire('classic.PostToolUse',{tool_name:'Bash',tool_use_id:first});
+ const chosen=first==='prompted'?b:a;chosen.release({kept:first});expect(await chosen.pending).toEqual({kept:first});
+ const before=h.companion().x;await h.advance(480);
+ if(first==='prompted'){expect(h.companion().waiting).toEqual([]);expect(h.companion().x).not.toBe(before);}else{expect(h.companion().waiting).toEqual(['Bash']);expect(h.companion().x).toBe(before);}
+ const remaining=first==='prompted'?a:b;remaining.release({kept:'last'});await remaining.pending;expect(h.companion().waiting).toEqual([]);
+});
+for(const behavior of ['allow','deny'])test('explicit '+behavior+' settles only its own request, even with identical parallel inputs',async()=>{
+ const h=host();await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'decisions'});await h.render(true);
+ const input={command:'synthetic identical'},a=await approvalTool(h,'a',input),b=await approvalTool(h,'b',input);
+ let entered,settle;const reached=new Promise(resolve=>entered=resolve),answer=new Promise(resolve=>settle=resolve);
+ const request=h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:input},()=>{entered();return answer;});await reached;
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:input});expect(h.companion().approvals.length).toBe(2);
+ const result={decision:{behavior,...behavior==='deny'?{message:'synthetic denial'}:{updatedInput:input}}};settle(result);expect(await request).toBe(result);
+ expect(h.companion().approvals.length).toBe(1);const before=h.companion().x;await h.advance(480);expect(h.companion().x).toBe(before);
+ a.release({kept:'a'});await a.pending;expect(h.companion().waiting).toEqual(['Bash']);b.release({kept:'b'});await b.pending;expect(h.companion().waiting).toEqual([]);
+});
+test('tool.check uses the permission input after rewriting and persists no tool arguments or fingerprints',async()=>{
+ const h=host();await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'rewrite'});await h.render(true);
+ const a=await approvalTool(h,'a',{command:'synthetic-original'}),b=await approvalTool(h,'b',{command:'synthetic-rewritten',nested:{b:2,a:1}},{command:'synthetic-original'});
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{nested:{a:1,b:2},command:'synthetic-rewritten'}});
+ expect(h.companion().approvals[0].ids).toEqual(['b']);expect(JSON.stringify([...h.runtime])).not.toContain('synthetic-');expect(JSON.stringify([...h.saved])).not.toContain('synthetic-');
+ expect(Object.keys(h.companion().approvals[0]).sort()).toEqual(['ids','token','tool']);
+ await h.fire('classic.PostToolUseFailure',{tool_name:'Bash',tool_use_id:'b'});expect(h.companion().waiting).toEqual([]);
+ b.release({kept:'b'});await b.pending;a.release({kept:'a'});await a.pending;
+});
+test('identical input matching keeps its uncertain candidate group until all candidates finish',async()=>{
+ const h=host();await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'ambiguous'});await h.render(true);
+ const input={command:'synthetic identical'},a=await approvalTool(h,'a',input),b=await approvalTool(h,'b',input);
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:input});expect(h.companion().approvals[0].ids).toEqual(['a','b']);
+ await h.fire('classic.PermissionDenied',{tool_name:'Bash',tool_use_id:'b'});expect(h.companion().approvals[0].ids).toEqual(['a']);expect(h.companion().waiting).toEqual(['Bash']);
+ a.release({kept:'a'});await a.pending;expect(h.companion().waiting).toEqual([]);b.release({kept:'b'});await b.pending;
+});
+test('request identity survives reload and old tool completions cannot change the new owner',async()=>{
+ const h=host({snapshotReads:true});await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'reload-approval'});await h.render(true);
+ const a=await approvalTool(h,'unprompted',{command:'synthetic long'}),b=await approvalTool(h,'prompted',{command:'synthetic short'});
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{command:'synthetic short'}});const token=h.companion().approvals[0].token;
+ await h.load();await h.render(true);await h.advance(1);expect(h.companion().approvals).toEqual([{token,tool:'Bash',ids:['prompted']}]);
+ await h.fire('classic.PostToolUse',{tool_name:'Bash',tool_use_id:'prompted'});expect(h.companion().waiting).toEqual([]);const before=h.companion().x;await h.advance(480);expect(h.companion().x).not.toBe(before);
+ const stable=structuredClone([...h.runtime]);a.release({kept:'old a'});b.release({kept:'old b'});await Promise.all([a.pending,b.pending]);expect([...h.runtime]).toEqual(stable);
+});
+test('an old permission decision cannot clear a later turn request and tool errors still propagate',async()=>{
+ const h=host();await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'old'});await h.render(true);
+ const a=await approvalTool(h,'old-call',{command:'synthetic old'});let enter,release;const reached=new Promise(resolve=>enter=resolve),answer=new Promise(resolve=>release=resolve);
+ const request=h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{command:'synthetic old'}},()=>{enter();return answer;});await reached;
+ await h.fire('turn.abort',{turnId:'old'});await h.fire('turn.start',{turnId:'new'});const b=await approvalTool(h,'new-call',{command:'synthetic new'});
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{command:'synthetic new'}});const current=structuredClone(h.companion().approvals);
+ release({decision:{behavior:'allow'}});await request;expect(h.companion().approvals).toEqual(current);a.release({kept:'old'});await a.pending;expect(h.companion().approvals).toEqual(current);
+ b.release({kept:'new'});await b.pending;const failure=Error('synthetic failure');
+ await expect(h.fire('tool.call',{tool:'Bash',tool_use_id:'error'},async()=>{await h.fire('classic.PermissionRequest',{tool_name:'Bash'});throw failure;})).rejects.toBe(failure);expect(h.companion().waiting).toEqual([]);
+});
