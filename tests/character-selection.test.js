@@ -3,19 +3,21 @@ import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {AsyncLocalStorage} from 'node:async_hooks';
 
-// Evaluate the staged sources in isolated memory. The generated production
-// entry belongs to the renderer/build task and is deliberately not rewritten.
+// Evaluate independent module instances with separate runtime/clock state.
+// Session-race regressions also exercise the generated production entry.
 const source=['../src/timer-core.js','../src/native-raster.js','../src/companion-core.js','../hooks/integration.js']
  .map(name=>readFileSync(resolve(import.meta.dir,name),'utf8').replace(/^export (?=const |function )/gm,''))
  .join('\n');
 const clone=value=>structuredClone(value);
-const preferencesKey='companion:preferences';
+const preferencesKey='companion:preferences',characterKey='companion:character',reducedKey='companion:reduced';
+const productionSource=readFileSync(resolve(import.meta.dir,'../hooks/register.js'),'utf8').replace(/^export (?=const |function )/gm,'');
+const isPreference=key=>key===preferencesKey||key===characterKey||key===reducedKey;
 const pausedTimer=(overrides={})=>({version:1,phase:'focus',remaining:543210,completed:2,status:'paused',motion:0,visible:true,...overrides});
 const runtimeCat=character=>({version:1,owner:'previous-owner',active:false,reason:'idle',turnId:null,waiting:[],tools:[],x:0,direction:1,frame:0,reduced:false,character});
 
-function host({snapshotReads=false}={}){
- const saved=new Map(),runtime=new Map(),clocks=new Map(),writes=[],registered=[],failedCAS=[],reads=new AsyncLocalStorage();
- let session='selection-session',now=0,clockId=0,drawing=false,hooks=new Map(),nextPreferencesRead=null,nextPreferencesWrite=null,nextCompanionWrite=null;
+function host({snapshotReads=false,saved=new Map(),sessionId='selection-session',production=false}={}){
+ const runtime=new Map(),clocks=new Map(),writes=[],registered=[],failedCAS=[],reads=new AsyncLocalStorage();
+ let session=sessionId,now=0,clockId=0,drawing=false,hooks=new Map(),nextPreferencesRead=null,nextPreferencesWrite=null,nextCompanionWrite=null;
  const address=reference=>reference.key+':'+reference.id;
  const dispatch=fn=>snapshotReads?reads.run(new Map(),fn):fn();
  const $={
@@ -23,9 +25,9 @@ function host({snapshotReads=false}={}){
   session:{id:async()=>session},
   store:{get:async key=>{
    const value=clone(saved.get(key));
-   if(key===preferencesKey&&nextPreferencesRead){const blocked=nextPreferencesRead;nextPreferencesRead=null;blocked.enter();await blocked.released;}
+   if(isPreference(key)&&nextPreferencesRead){const blocked=nextPreferencesRead;nextPreferencesRead=null;blocked.enter();await blocked.released;}
    return value;
-  },set:async(key,value)=>{saved.set(key,clone(value));writes.push({kind:'store',key,value:clone(value)});if(key===preferencesKey&&nextPreferencesWrite){const blocked=nextPreferencesWrite;nextPreferencesWrite=null;blocked.enter();await blocked.released;}}},
+  },set:async(key,value)=>{saved.set(key,clone(value));writes.push({kind:'store',key,value:clone(value)});if(isPreference(key)&&nextPreferencesWrite){const blocked=nextPreferencesWrite;nextPreferencesWrite=null;blocked.enter();await blocked.released;}}},
   state:{get:async reference=>{
    const key=address(reference),snapshot=reads.getStore();
    if(snapshot?.has(key))return snapshot.get(key);
@@ -45,7 +47,7 @@ function host({snapshotReads=false}={}){
   ui:{invalidate:()=>{},resolve:()=>({Box:props=>({type:'Box',props,children:props.children}),Text:props=>({type:'Text',props,children:props.children}),Raster:props=>({type:'Raster',props,children:[]})})},
  };
  function schedule(ms,fn,repeat){const id=++clockId;clocks.set(id,{ms,fn:()=>dispatch(fn),at:now+ms,repeat});return{cancel:()=>clocks.delete(id)};}
- function load(){clocks.clear();hooks=new Map();const register=new Function(source+'\nreturn register;')();register((name,...args)=>hooks.set(name,args.at(-1)));}
+ function load(){clocks.clear();hooks=new Map();const register=new Function((production?productionSource:source)+'\nreturn register;')();register((name,...args)=>hooks.set(name,args.at(-1)));}
  const fire=(name,event={},next=async()=>({unchanged:true}))=>dispatch(()=>hooks.get(name)($,event,next));
  const command=args=>fire('command.run',{args});
  async function render(){drawing=true;try{return await fire('ui.render',{surface:'terminal',props:{hasSurvey:false,isWorking:false,bodyColumns:80,maxRows:8}},async()=>({type:'engine',id:'native-empty-slot'}));}finally{drawing=false;}}
@@ -63,7 +65,7 @@ test('local character commands select A/B and status without timer writes',async
  expect(await h.command('character status')).toEqual({text:'Cat character A.'});
  expect(h.registered[0].description).toContain('character a/b/status');
  expect(await h.command(' CHARACTER B ')).toEqual({text:'Cat character B.'});
- expect(h.companion().character).toBe('b');expect(h.saved.get(preferencesKey)).toEqual({character:'b'});
+ expect(h.companion().character).toBe('b');expect(h.saved.get(characterKey)).toBe('b');
  expect(await h.command('character status')).toEqual({text:'Cat character B.'});
  expect(await h.command('character a')).toEqual({text:'Cat character A.'});expect(h.companion().character).toBe('a');
  const before=clone([...h.saved]);expect((await h.command('character c')).text).toContain('character a | character b | character status');
@@ -74,9 +76,9 @@ test('motion and selection preserve each other and unknown preference fields',as
  const h=host(),original={character:'b',reduced:false,future:{anchor:'tail',scale:3},other:['keep',7]};
  h.saved.set(preferencesKey,clone(original));h.load();await h.fire('session.start');
  expect(h.companion().character).toBe('b');
- await h.command('motion off');expect(h.saved.get(preferencesKey)).toEqual({...original,reduced:true});
- await h.command('character a');expect(h.saved.get(preferencesKey)).toEqual({...original,reduced:true,character:'a'});
- await h.command('motion on');expect(h.saved.get(preferencesKey)).toEqual({...original,character:'a'});
+ await h.command('motion off');expect(h.saved.get(reducedKey)).toBe(true);
+ await h.command('character a');expect(h.saved.get(characterKey)).toBe('a');
+ await h.command('motion on');expect(h.saved.get(reducedKey)).toBe(false);expect(h.saved.get(preferencesKey)).toEqual(original);
  expect(h.companion().character).toBe('a');expect(h.companion().reduced).toBe(false);expect(h.timerWrites()).toEqual([]);
 });
 
@@ -96,11 +98,11 @@ test('reset/restart affect only timer state; character changes leave a running t
 
 test('selection and motion persist across reload and new-session activation',async()=>{
  const h=host({snapshotReads:true});h.load();await h.fire('session.start');await h.command('character b');await h.command('motion off');
- const prefs=clone(h.saved.get(preferencesKey));h.load();await h.fire('session.start');
- expect(h.companion().character).toBe('b');expect(h.companion().reduced).toBe(true);expect(h.saved.get(preferencesKey)).toEqual(prefs);
+ const prefs=clone([...h.saved].filter(([key])=>isPreference(key)));h.load();await h.fire('session.start');
+ expect(h.companion().character).toBe('b');expect(h.companion().reduced).toBe(true);expect([...h.saved].filter(([key])=>isPreference(key))).toEqual(prefs);
  h.saved.set('timer:selection-next',pausedTimer({phase:'short',remaining:123456,completed:3}));
  h.setSession('selection-next');await h.fire('classic.SessionStart',{source:'clear'});
- expect(h.companion().character).toBe('b');expect(h.companion().reduced).toBe(true);expect(h.saved.get(preferencesKey)).toEqual(prefs);
+ expect(h.companion().character).toBe('b');expect(h.companion().reduced).toBe(true);expect([...h.saved].filter(([key])=>isPreference(key))).toEqual(prefs);
  expect(h.saved.get('timer:selection-next')).toEqual(pausedTimer({phase:'short',remaining:123456,completed:3}));
  await h.command('character a');h.setSession('selection-session');await h.fire('classic.SessionStart',{source:'resume'});
  expect(h.companion().character).toBe('a');expect(h.companion().reduced).toBe(true);
@@ -128,11 +130,11 @@ test('legacy preferences permit runtime restoration; invalid or absent runtime c
  }
 });
 
-test('parallel character and motion commands serialize preference merges',async()=>{
+test('parallel character and motion commands serialize local runtime updates',async()=>{
  const h=host(),unknown={custom:{nested:['preserve']}};h.saved.set(preferencesKey,{character:'a',reduced:false,...unknown});h.load();await h.fire('session.start');
  const responses=await Promise.all([h.command('character b'),h.command('motion off')]);
  expect(responses).toEqual([{text:'Cat character B.'},{text:'Cat motion off.'}]);
- expect(h.saved.get(preferencesKey)).toEqual({character:'b',reduced:true,...unknown});expect(h.companion().character).toBe('b');expect(h.companion().reduced).toBe(true);expect(h.timerWrites()).toEqual([]);
+ expect(h.saved.get(characterKey)).toBe('b');expect(h.saved.get(reducedKey)).toBe(true);expect(h.saved.get(preferencesKey)).toEqual({character:'a',reduced:false,...unknown});expect(h.companion().character).toBe('b');expect(h.companion().reduced).toBe(true);expect(h.timerWrites()).toEqual([]);
 });
 
 test('a pending same-owner clock CAS cannot reject a preference command after its store write',async()=>{
@@ -145,7 +147,7 @@ test('a pending same-owner clock CAS cannot reject a preference command after it
  for(let i=0;i<30;i++)await Promise.resolve();
  const failedWhilePending=h.failedCAS.length-failures;companion.release();await clock;
  expect(await selection).toEqual({text:'Cat character B.'});expect(failedWhilePending).toBe(0);
- expect(h.saved.get(preferencesKey)).toEqual({character:'b',reduced:false,future:'keep'});expect(h.companion().character).toBe('b');expect(h.timerWrites()).toEqual([]);
+ expect(h.saved.get(characterKey)).toBe('b');expect(h.saved.get(preferencesKey)).toEqual({character:'a',reduced:false,future:'keep'});expect(h.companion().character).toBe('b');expect(h.timerWrites()).toEqual([]);
 });
 
 test('the shared CAS queue preserves deferred first-drawing claim and restored timer clocks',async()=>{
@@ -181,5 +183,55 @@ test('session boundary releases the new preference queue and rejects the old pen
  const beforeStore=clone([...h.saved]),beforeRuntime=clone([...h.runtime]),beforeWrites=h.writes.length;
  blocked.release();expect((await old).text).toContain('changed during reload');
  expect([...h.saved]).toEqual(beforeStore);expect([...h.runtime]).toEqual(beforeRuntime);expect(h.writes.length).toBe(beforeWrites);
- expect(h.companion().character).toBe('b');expect(h.companion().reduced).toBe(false);expect(h.saved.get(preferencesKey)).toEqual({character:'b',reduced:false,future:'keep'});
+ expect(h.companion().character).toBe('b');expect(h.companion().reduced).toBe(false);expect(h.saved.get(characterKey)).toBe('b');expect(h.saved.get(preferencesKey)).toEqual({character:'a',reduced:false,future:'keep'});
+});
+
+for(const [delayed,other] of [['character b','motion off'],['motion off','character b']]){
+ test(`independent production sessions retain both preferences when ${delayed} is delayed`,async()=>{
+  const legacy={character:'a',reduced:false,future:{keep:['unknown']}};
+  const saved=new Map([[preferencesKey,clone(legacy)]]);
+  const first=host({saved,sessionId:'synthetic-first',production:true}),second=host({saved,sessionId:'synthetic-second',production:true});
+  first.load();second.load();await first.fire('session.start');await second.fire('session.start');
+  expect(first.runtime).not.toBe(second.runtime);
+  const blocked=first.blockNextPreferencesRead(),pending=first.command(delayed);await blocked.entered;
+  expect(await second.command(other)).toEqual({text:other==='character b'?'Cat character B.':'Cat motion off.'});
+  blocked.release();expect(await pending).toEqual({text:delayed==='character b'?'Cat character B.':'Cat motion off.'});
+  expect(saved.get(characterKey)).toBe('b');expect(saved.get(reducedKey)).toBe(true);expect(saved.get(preferencesKey)).toEqual(legacy);
+  const fresh=host({saved,sessionId:'synthetic-fresh',production:true});fresh.load();await fresh.fire('session.start');
+  expect(fresh.companion().character).toBe('b');expect(fresh.companion().reduced).toBe(true);
+  expect(fresh.writes.filter(write=>write.kind==='store')).toEqual([]);
+  for(const h of [first,second]){h.load();await h.fire('session.start');expect(h.companion().character).toBe('b');expect(h.companion().reduced).toBe(true);}
+ });
+}
+
+test('per-field keys override only their legacy field, including false, without migration writes',async()=>{
+ for(const [key,value,expected] of [[characterKey,'a',{character:'a',reduced:true}],[reducedKey,false,{character:'b',reduced:false}]]){
+  const h=host({production:true}),legacy={character:'b',reduced:true,future:{keep:'original'}};
+  h.saved.set(preferencesKey,clone(legacy));h.saved.set(key,value);const before=clone([...h.saved]);
+  h.load();await h.fire('session.start');
+  expect(h.companion().character).toBe(expected.character);expect(h.companion().reduced).toBe(expected.reduced);
+  h.load();await h.fire('session.start');
+  expect(h.companion().character).toBe(expected.character);expect(h.companion().reduced).toBe(expected.reduced);
+  expect([...h.saved]).toEqual(before);expect(h.writes.filter(write=>write.kind==='store')).toEqual([]);
+ }
+});
+
+test('invalid per-field values use A and motion on instead of stale legacy or runtime values',async()=>{
+ for(const value of [null,'invalid',1,{},[], 'true']){
+  const h=host({production:true});h.saved.set(preferencesKey,{character:'b',reduced:true,future:'keep'});
+  h.saved.set(characterKey,clone(value));h.saved.set(reducedKey,clone(value));
+  h.runtime.set('companionRuntime:selection-session',{value:{...runtimeCat('b'),reduced:true},version:3});
+  const before=clone([...h.saved]);h.load();await h.fire('session.start');
+  expect(h.companion().character).toBe('a');expect(h.companion().reduced).toBe(false);
+  expect([...h.saved]).toEqual(before);expect(h.writes.filter(write=>write.kind==='store')).toEqual([]);
+ }
+});
+
+test('same-value commands avoid redundant store writes and never rewrite the legacy record',async()=>{
+ const h=host({production:true}),legacy={character:'b',reduced:true,future:{keep:true}};h.saved.set(preferencesKey,clone(legacy));h.load();await h.fire('session.start');
+ await h.command('character b');await h.command('motion off');
+ const writes=clone(h.writes.filter(write=>write.kind==='store'));
+ expect(writes).toEqual([{kind:'store',key:characterKey,value:'b'},{kind:'store',key:reducedKey,value:true}]);
+ await h.command('character b');await h.command('motion off');
+ expect(h.writes.filter(write=>write.kind==='store')).toEqual(writes);expect(h.saved.get(preferencesKey)).toEqual(legacy);
 });

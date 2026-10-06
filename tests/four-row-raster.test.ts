@@ -84,7 +84,7 @@ test('generated entry switches A/B locally and motion off freezes pixels without
  await command($,'motion off');await ui.redraw({...BASE.props,isWorking:true});const held=rasterProps(await ui.drawn()).cells;
  const state={...runtime.get('companionRuntime').value};await clock.advance(3000);await ui.redraw({...BASE.props,isWorking:true});
  expect(rasterProps(await ui.drawn()).cells).toBe(held);expect(runtime.get('companionRuntime').value.frame).toBe(state.frame);expect(runtime.get('companionRuntime').value.x).toBe(state.x);
- expect(store.get('companion:preferences')).toEqual({character:'b',reduced:true,future:{keep:'unknown'}});
+ expect(store.get('companion:character')).toBe('b');expect(store.get('companion:reduced')).toBe(true);expect(store.get('companion:preferences')).toEqual({character:'a',reduced:false,future:{keep:'unknown'}});
  expect(storeWrites.filter(key=>key.startsWith('timer:')).length).toBe(0);await ui.unmount();
 });
 
