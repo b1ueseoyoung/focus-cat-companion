@@ -13,7 +13,14 @@ cd focus-cat-companion
 claude --plugin-dir "$PWD"
 ```
 
-이미 이 Mod를 불러온 세션에서는 `/reload-plugins`로 변경을 적용합니다. 검증한 호스트는 Claude Code 2.1.289입니다. 실행에 별도의 서버나 이미지 생성 서비스는 필요하지 않습니다.
+Windows Terminal의 PowerShell에서는 저장소 폴더에서 다음을 실행하세요. native Windows와 WSL의 설치·경로 차이, 개발 검사와 미완료 수동 검증은 [Windows 안내](docs/WINDOWS.md)에 있습니다.
+
+```powershell
+$pluginDir = (Get-Location).Path
+claude --plugin-dir "$pluginDir"
+```
+
+이미 이 Mod를 불러온 세션에서는 `/reload-plugins`로 변경을 적용합니다. Mac에서 검사한 호스트는 Claude Code 2.1.289 / 2.1.290입니다. 실행에 별도의 서버나 이미지 생성 서비스는 필요하지 않습니다.
 
 | 명령 | 동작 |
 | --- | --- |

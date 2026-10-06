@@ -17,6 +17,12 @@ ASSET_PREVIEW = ROOT / "preview" / "assets"
 TRANSPARENT = (0, 0, 0, 0)
 
 
+def write_json(path, value):
+    # Explicit UTF-8 and LF also on native Windows; manifests hash exact bytes.
+    with path.open("w", encoding="utf-8", newline="\n") as output:
+        output.write(json.dumps(value, indent=2) + "\n")
+
+
 def color(value):
     return tuple(bytes.fromhex(value[1:])) + (255,)
 
@@ -88,7 +94,7 @@ def export(image, name, palette, state, index):
         "externalAssetsUsed": False, "imageGenerationUsed": False,
         "spriteGenUsed": False, "antialiasing": False,
     }
-    (OUT / f"{name}.grid.json").write_text(json.dumps(grid, indent=2) + "\n", encoding="utf-8")
+    write_json(OUT / f"{name}.grid.json", grid)
     return {"png": path.name, "grid": f"{name}.grid.json"}
 
 
@@ -177,7 +183,7 @@ def main():
         source = Image.open(source_paths[c])
         assert source.mode == "RGBA" and source.size == (8, 8)
         original = source.copy()
-        palette = json.loads((ROOT / "assets" / "characters" / f"character-{c}.grid.json").read_text())["palette"]
+        palette = json.loads((ROOT / "assets" / "characters" / f"character-{c}.grid.json").read_text(encoding="utf-8"))["palette"]
         changes = []
         if c == "b":
             for point in ((2, 3), (5, 3)):
@@ -232,7 +238,7 @@ def main():
         }
         all_frames[c] = frames
     assert source_hashes == {c: sha(path) for c, path in source_paths.items()}
-    (OUT / "playback.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    write_json(OUT / "playback.json", metadata)
     preview(all_frames)
     dance_preview(all_frames)
     assert all(sha(OUT / name) == digest for name, digest in preserved.items())

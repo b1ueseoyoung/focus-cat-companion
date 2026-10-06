@@ -1,9 +1,9 @@
 import {test,expect} from 'bun:test';
 import {resolve} from 'node:path';
+import {freshModule} from './helpers/fresh-module.js';
 import {AsyncLocalStorage} from 'node:async_hooks';
-let loadId=0;
 function host(options={}){const saved=new Map(),runtime=new Map(),timers=new Map(),readSnapshots=new Map(),reads=new AsyncLocalStorage();let now=0,drawing=false,id=0,hooks=new Map(),session='isolated-reload',nextNow=null,nextCompanionWrite=null;const addr=r=>r.key+':'+r.id,dispatch=fn=>options.snapshotReads?reads.run(new Map(),fn):fn();const $={command:{list:async()=>[{name:'focus-cat',plugin:'focus-cat-companion@inline'}],register:async()=>{}},session:{id:async()=>session},store:{get:async k=>saved.get(k),set:async(k,v)=>saved.set(k,structuredClone(v))},state:{get:async r=>{const address=addr(r),snapshot=reads.getStore();if(snapshot?.has(address))return snapshot.get(address);let value=runtime.get(address)||{value:undefined,version:0};if(readSnapshots.has(address)){value=readSnapshots.get(address);readSnapshots.delete(address);}if(snapshot){value=structuredClone(value);snapshot.set(address,value);}return value;},set:async(r,v,o={})=>{if(drawing)throw Error('write during drawing');const old=runtime.get(addr(r))||{version:0};if(o.ifVersion!==undefined&&old.version!==o.ifVersion)return{isSet:false,version:old.version};const version=old.version+1;runtime.set(addr(r),{value:structuredClone(v),version});if(r.key==='companionRuntime'&&nextCompanionWrite){const blocked=nextCompanionWrite;nextCompanionWrite=null;blocked.enter();await blocked.result;}return{isSet:true,version};}},clock:{now:async()=>{if(nextNow){const wait=nextNow;nextNow=null;wait.enter();return await wait.result;}return now;},every:(ms,fn)=>{const key=++id;timers.set(key,{ms,fn:()=>dispatch(fn),at:now+ms,repeat:true});return{cancel:()=>timers.delete(key)}},after:(ms,fn)=>{const key=++id;timers.set(key,{ms,fn:()=>dispatch(fn),at:now+ms,repeat:false});return{cancel:()=>timers.delete(key)}}},ui:{invalidate:()=>{},resolve:()=>({Box:p=>({type:'Box',props:p,children:p.children}),Text:p=>({type:'Text',props:p,children:p.children}),Raster:p=>({type:'Raster',props:p,children:[]})})}};
-async function load(){timers.clear();hooks=new Map();const m=await import(resolve(import.meta.dir,'../hooks/register.js')+'?isolated='+ ++loadId);m.register((name,...args)=>hooks.set(name,args.at(-1)));}
+async function load(){timers.clear();hooks=new Map();const m=await freshModule(resolve(import.meta.dir,'../hooks/register.js'));m.register((name,...args)=>hooks.set(name,args.at(-1)));}
 const fire=(name,e={},next=async()=>({unchanged:true}))=>dispatch(()=>{const tracked=async event=>{const result=await next(event);tracked.trace=next.trace??[{index:1}];return result;};tracked.trace=[];return hooks.get(name)($,e,tracked);});
 async function render(working=false,width=40,rows=4){drawing=true;try{return await fire('ui.render',{surface:'terminal',props:{hasSurvey:false,isWorking:working,bodyColumns:width,maxRows:rows}},async()=>({type:'Box',props:{height:0},children:[]}));}finally{drawing=false;}}
 async function advance(ms){const end=now+ms;while(true){const entry=[...timers].sort((a,b)=>a[1].at-b[1].at)[0];if(!entry||entry[1].at>end)break;now=entry[1].at;if(!entry[1].repeat)timers.delete(entry[0]);await entry[1].fn();if(timers.has(entry[0]))entry[1].at=now+entry[1].ms;}now=end;}
@@ -184,4 +184,41 @@ for(const trace of [[],[{index:2}]])test('unproven final permission decisions ke
  await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{command:'synthetic pending'}},decision);
  expect(h.companion().waiting).toEqual(['Bash']);const before=h.companion().x;await h.advance(480);expect(h.companion().x).toBe(before);
  pending.release({kept:true});await pending.pending;expect(h.companion().waiting).toEqual([]);await h.advance(480);expect(h.companion().x).not.toBe(before);
+});
+
+// Synthetic host events only: these cases do not execute either shell or prove
+// native Windows/WSL rendering, live approval dialogs, or model-event timing.
+for(const scenario of [
+ {label:'Windows PowerShell',tool:'PowerShell',character:'a',input:{command:'Get-Item -LiteralPath "C:\\Users\\테스트 사용자\\focus cat #1"\r\nWrite-Output "완료"',cwd:'C:\\Users\\테스트 사용자\\focus cat #1'}},
+ {label:'WSL Bash',tool:'Bash',character:'b',input:{command:'ls -- "/home/테스트 사용자/focus cat #1"\nprintf "완료\\n"',cwd:'/home/테스트 사용자/focus cat #1'}},
+])test(scenario.label+' mock lifecycle preserves input/results, freezes approval, and dances once for 960 ms',async()=>{
+ const h=host({snapshotReads:true});await h.load();await h.fire('session.start');
+ await h.fire('command.run',{args:'character '+scenario.character});
+ const turnId='synthetic-platform-turn',id='synthetic-platform-tool',input=structuredClone(scenario.input),originalInput=structuredClone(input);
+ await h.fire('turn.start',{turnId});await h.render(true);await h.advance(480);
+ const walking=h.companion();expect(walking.character).toBe(scenario.character);expect(walking.x).toBeGreaterThan(0);
+ let enter,release;const entered=new Promise(resolve=>enter=resolve),result=new Promise(resolve=>release=resolve);
+ const pending=h.fire('tool.call',{tool:scenario.tool,tool_use_id:id,...input},async()=>{
+  await h.fire('tool.check',{tool:scenario.tool,tool_use_id:id,input});enter();return result;
+ });
+ await entered;const permissionResult={synthetic:true};
+ expect(await h.fire('classic.PermissionRequest',{tool_name:scenario.tool,tool_input:input},async()=>permissionResult)).toBe(permissionResult);
+ expect(h.companion().waiting).toEqual([scenario.tool]);expect(h.companion().approvals[0].ids).toEqual([id]);
+ const held=structuredClone(h.companion()),heldRaster=(await h.render(true)).children[0].props;
+ expect(heldRaster.rows).toBe(4);expect(h.timers.size).toBe(0);
+ await h.advance(960);
+ expect(h.companion()).toMatchObject({x:held.x,frame:held.frame,danceActive:false});
+ expect((await h.render(true)).children[0].props).toEqual(heldRaster);
+ const toolResult={result:{exitCode:0},text:'원형 유지\r\n'};release(toolResult);
+ expect(await pending).toBe(toolResult);expect(input).toEqual(originalInput);
+ expect(h.companion().waiting).toEqual([]);await h.advance(240);
+ expect(h.companion().x).not.toBe(held.x);expect(h.companion().danceActive).toBe(false);
+ const completion={turnId,reason:'answer',isAborted:false},answer={text:'synthetic answer'};
+ expect(await h.fire('turn.complete',completion,async()=>answer)).toBe(answer);
+ expect(h.companion()).toMatchObject({active:false,danceActive:true,danceFrame:0});
+ await h.advance(840);expect(h.companion()).toMatchObject({danceActive:true,danceFrame:7});
+ await h.advance(120);expect(h.companion()).toMatchObject({danceActive:false,danceFrame:0});expect(h.timers.size).toBe(0);
+ await h.fire('turn.complete',completion);await h.render(true);await h.advance(960);
+ expect(h.companion()).toMatchObject({active:false,danceActive:false,lastCompletedTurnId:turnId});expect(h.timers.size).toBe(0);
+ expect(JSON.stringify([...h.runtime,...h.saved])).not.toContain('focus cat #1');
 });

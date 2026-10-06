@@ -1,0 +1,4 @@
+# Keep manifest hashes and generated sources identical on every platform.
+* text=auto eol=lf
+*.png -text
+*.gif -text

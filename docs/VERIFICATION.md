@@ -1,16 +1,17 @@
 # Verification scope — 0.6.0
 
-The original public 0.6.0 archive passed 85 isolated tests. The current source includes timer-storage, cross-session preference concurrency and approval lifecycle fixes and passes 124 isolated tests on Claude Code 2.1.289 and Bun 1.4.2: 40 official SDK tests and 84 Bun tests, zero failures. Strict validation passed with zero errors/warnings. Test stores, sessions and tool calls use synthetic data; no installed user Mod or user timer records were changed.
+The original public 0.6.0 archive passed 85 isolated tests. The current source includes timer-storage, cross-session preference concurrency and approval lifecycle fixes and previously passed 124 isolated tests on Claude Code 2.1.289 and Bun 1.4.2. The Windows portability revision passes 127 JavaScript/SDK tests on macOS with Claude Code 2.1.290 and Bun 1.4.2: 40 official SDK tests and 87 Bun tests, zero failures. Five additional standard-library Python filesystem/encoding regressions are included. Strict validation passed with zero errors/warnings. Test stores, sessions and tool calls use synthetic data; no installed user Mod or user timer records were changed.
 
 | Existing test group | Passed | Scope |
 | --- | --- | --- |
 | integration | 9 | Timer transitions, four-focus long break, manual next, deduplication and suspension/recovery |
 | four-row Raster | 6 | Cell packing, bounds, approval freeze and independent timer |
 | dance integration | 13 | A/B one-shot completion, errors/abort/refusal, approval, motion, stale UI and interrupted playback |
-| reload | 23 | Ownership fences, no replay, request-specific approval lifecycle, input matching and outer-hook fallback |
+| reload | 25 | Ownership fences, no replay, request-specific approval lifecycle, input matching and outer-hook fallback |
 | character selection | 18 | A/B persistence, independent-session preference writes in both orders, legacy fallback, invalid-value defaults, reload ownership and timer isolation |
 | pixel core | 15 | PNG oracle, transparency, clipping, walking and boundary turns |
 | dance core | 16 | Fixed face/anchor, eight timing slots, offsets, freeze and 960ms finish |
+| portable Raster encoding | 1 | Legacy btoa fallback: A/B 26 poses at 512 columns, byte-for-byte parity |
 | timer concurrency | 12 | Overlapping tick/pause/reset/hide, reload, CAS retry, rejected-command isolation and partial-commit recovery |
 | timer storage SDK | 4 | Rejected writes, safe next retry and ownership loss after a timer commit |
 | approval lifecycle SDK | 8 | Explicit decisions, same-name parallel calls, rewritten inputs and outer-hook overrides |
@@ -24,3 +25,13 @@ User-verified on macOS, 2026-10-06: the user directly confirmed cat motion durin
 Not independently verified: precise real model-turn event timing, completion-dance timing/deduplication during a real turn, native tool approval/reload sequence, OS sleep/wake, force termination or Windows/Linux rendering. No real model prompt or real user timer command was submitted by the agent for previews. The Mod does not control host model/effort. Visual size depends on terminal font. Timer pauses after a host clock gap over 10 seconds; shorter gaps count as elapsed time. Force termination can lose time since the last snapshot. An already-issued persistent store write cannot be atomically cancelled. Concurrent writes to the same preference remain last-write-wins; already-open sessions read other sessions' preferences on reload or session switch. The two-session preference regressions use an in-memory host, not two live Claude processes. PermissionRequest exposes no call ID; identical or unknown inputs retain a conservative candidate group. There is no public native-dialog decision event, so manual approval resumes on tool completion; an outer permission hook also requires this conservative fallback.
 
 The GitHub source includes fixes after the original public-review archive; pixel assets remain unchanged. The GitHub copy adds clone instructions and permits local root Git metadata during file verification. The source-file allowlist and byte checks remain enforced.
+
+## Windows portability revision
+
+The runtime entry, timer core and all pixel/preview assets remain byte-for-byte unchanged from main a0e4ec489493493d3693644d1241eb57e49daf42. Runtime storage stays on the host store/state API; this Mod adds no filesystem, process or shell access. New mocked PowerShell/CRLF/Windows-path and WSL/Bash cases preserve permission holds, four-row pixels, original input/results and the 960ms one-shot dance. They do not launch either shell. Fresh-module tests read the generated entry as UTF-8 and evaluate it in separate scopes; they do not rely on Bun file-URL query cache semantics.
+
+`.gitattributes` fixes checkout text to LF even under Windows Git autocrlf defaults. Offline generators explicitly read/write UTF-8 and emit LF. `scripts/check-platform.py` copies only the release inventory to a temporary path containing spaces, Korean text and `#`, then checks release hashes, module regeneration and all Bun suites. Its optional `--with-claude` also requires strict host validation and the official mock SDK suite. No user timer records or installed Mod files are copied. The Python tests cover CRLF source normalization, foreign working directories, Unicode JSON metadata and detection of same-length runtime corruption.
+
+The GitHub Actions matrix runs this portable check on Windows Server 2025, macOS 15 and Ubuntu 24.04, with the PR head commit explicitly checked out and printed in the logs. The workflow uses Python 3.12 and Bun 1.4.2; it does not install Claude Code, log in, submit model requests or observe Windows Terminal. Consult the PR checks for actual run results and the exact tested SHA; workflow availability alone is not a pass. The hosted Windows runner does not establish Windows 10/11 client compatibility.
+
+Interactive native Windows and WSL remain unverified: plugin loading, live terminal appearance, real model reply/approval timing, host-backed settings across real process restarts, sleep/wake and force termination still need the unchecked [Windows smoke checklist](WINDOWS.md#windows-수동-smoke-체크리스트--아직-미실행). A green Windows CI job covers only the checks above.

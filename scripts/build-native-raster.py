@@ -42,5 +42,6 @@ export function pixelRaster(cat,columns){
  return {columns,rows:4,cells};
 }
 '''
-(r/'src/native-raster.js').write_text(code)
+with (r/'src/native-raster.js').open('w', encoding='utf-8', newline='\n') as output:
+    output.write(code)
 print('Generated source from original 8x8 pixels')
