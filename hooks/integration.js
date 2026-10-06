@@ -11,6 +11,7 @@ export function pixelLayout(timer,cat,width,maxRows){
 }
 
 let timer=null,cat=createCompanion(),timerClock=null,catClock=null,catClockMode=null,catClockTurnId=null,catClockGeneration=0,timerKey=null,sessionId=null,initialized=false,initializing=null,enabled=false,owner=crypto.randomUUID(),runtimeVersion=0,lastTimer='',lastHostTimer='',lastCat='',timerBusy=false,queue=Promise.resolve(),preferencesQueue=Promise.resolve(),runtimeQueue=Promise.resolve(),commitClock=null,claimed=false;
+let timerQueue=Promise.resolve(),timerVersion=0,timerEpoch=0;
 const redraw=$=>$.ui.invalidate('ui.render');
 const selectedCharacter=value=>value==='b'?'b':'a';
 const preferenceRecord=value=>value&&typeof value==='object'&&!Array.isArray(value)?value:{};
@@ -62,17 +63,51 @@ function savePreferences($,patch,t=identity()){
 }
 async function claimRuntime($,t=identity()){for(let i=0;i<4;i++){if(!isCurrent(t))return;const previous=await $.state.get({plugin:'focus-cat-companion',key:'companionRuntime',id:t.id});if(!isCurrent(t))return;if(await writeCompanionRuntime($,t,{claim:true,version:previous.version}))return;}throw Error('Companion state changed during reload; try reload again.');}
 function deferredCommit($){if(commitClock)return;const t=identity();commitClock=$.clock.after(1,async()=>{if(!isCurrent(t))return;commitClock=null;if(!claimed)await claimRuntime($,t);else await persistCat($);if(!isCurrent(t)||!claimed)return;syncClocks($);redraw($);});}
-async function saveTimer($,t=identity()){
- if(!await ownsRuntime($,t))return false;
- const previous=await $.state.get({plugin:'focus-cat-companion',key:'timerRuntime',id:t.id});
- if(!isCurrent(t))return false;
- const value=snapshot(t.timer),sig=JSON.stringify(value);
- if(sig!==lastTimer){await $.store.set(t.key,value);if(!isCurrent(t))return false;lastTimer=sig;}
- if(!await ownsRuntime($,t))return false;
- const held={...t.timer,last:t.timer.status==='running'?t.timer.last:0},hs=JSON.stringify(held);
- if(hs!==lastHostTimer){const result=await $.state.set({plugin:'focus-cat-companion',key:'timerRuntime',id:t.id},held,{ifVersion:previous.version});if(result.isSet&&isCurrent(t))lastHostTimer=hs;}
- return isCurrent(t);
+async function saveTimer($,t,valid,state){
+ if(!valid())return {ok:false,committed:false};
+ const held={...state,last:state.status==='running'?state.last:0},hs=JSON.stringify(held);
+ if(hs!==lastHostTimer){
+  // Dispatch reads are snapshots. Use the version returned by each write,
+  // including a rejected CAS, instead of re-reading a stale dispatch snapshot.
+  let written=false;
+  for(let attempt=0;attempt<4;attempt++){
+   if(!valid()||(attempt>0&&!await ownsRuntime($,t))||!valid())return {ok:false,committed:false};
+   const result=await $.state.set({plugin:'focus-cat-companion',key:'timerRuntime',id:t.id},held,{ifVersion:timerVersion});
+   if(!valid())return {ok:false,committed:result.isSet};
+   timerVersion=result.version;
+   if(result.isSet){lastHostTimer=hs;written=true;break;}
+  }
+  if(!written)return {ok:false,committed:false};
+ }
+ // Publish locally only after the host accepts the staged timer. A rejected
+ // command must remain safe to retry, including non-idempotent next.
+ if(!valid())return {ok:false,committed:true};
+ Object.assign(t.timer,state);cat.visible=state.visible;
+ try{
+  if(!await ownsRuntime($,t)||!valid())return {ok:false,committed:true};
+  const value=snapshot(state),sig=JSON.stringify(value);
+  if(sig!==lastTimer){await $.store.set(t.key,value);if(!valid())return {ok:false,committed:true};lastTimer=sig;}
+  return {ok:valid(),committed:true};
+ }catch{return {ok:false,committed:true};}
 }
+function updateTimer($,update,t=identity()){
+ const epoch=timerEpoch,valid=()=>isCurrent(t)&&epoch===timerEpoch;
+ const work=timerQueue.catch(()=>{}).then(async()=>{
+  if(!valid())return {ok:false,committed:false};
+  const now=await $.clock.now();
+  if(!valid()||!await ownsRuntime($,t)||!valid())return {ok:false,committed:false};
+  const state={...t.timer},message=update(state,now);
+  const result=await saveTimer($,t,valid,state);
+  // A host-committed change survives a later persistence failure. Confirm
+  // ownership again before synchronizing clocks after that partial success.
+  let sync=result.ok;
+  if(!sync&&result.committed&&valid()){try{sync=await ownsRuntime($,t);}catch{}}
+  if(sync&&valid()){syncClocks($);redraw($);}
+  return {...result,message};
+ });
+ timerQueue=work;return work;
+}
+function interruptTimerUpdates(){timerEpoch++;timerQueue=Promise.resolve();cancelClocks();}
 function syncClocks($){
  const renderable=enabled&&claimed&&timer?.visible&&cat.visible&&cat.rows>=CAT_ROWS&&cat.columns>=CAT_WIDTH;
  if(cat.danceActive&&(!renderable||cat.reduced||cat.waiting.size)){stopDance(cat,renderable&&cat.reduced&&!cat.waiting.size);deferredCommit($);}
@@ -82,14 +117,14 @@ function syncClocks($){
  if(mode&&!catClock){const t=identity(),turnId=cat.turnId,generation=++catClockGeneration;catClockMode=mode;catClockTurnId=turnId;const valid=()=>catClockMode===mode&&catClockGeneration===generation&&cat.turnId===turnId;catClock=$.clock.every(mode==='dance'?DANCE_INTERVAL_MS:WALK_INTERVAL_MS,async()=>{if(!valid()||!await ownsRuntime($,t)||!valid())return;const changed=mode==='dance'?advanceDance(cat):advance(cat);if(changed){await persistCat($);if(isCurrent(t)){syncClocks($);redraw($);}}});}
  const running=enabled&&claimed&&timer?.status==='running';
  if(!running&&timerClock){timerClock.cancel();timerClock=null;}
- if(running&&!timerClock){const t=identity();timerClock=$.clock.every(1000,async()=>{if(timerBusy||!isCurrent(t))return;timerBusy=true;try{const now=await $.clock.now();if(!await ownsRuntime($,t))return;tick(t.timer,now);if(!await saveTimer($,t))return;syncClocks($);redraw($);}finally{if(isCurrent(t))timerBusy=false;}});}
+ if(running&&!timerClock){const t=identity();timerClock=$.clock.every(1000,async()=>{if(timerBusy||!isCurrent(t))return;timerBusy=true;try{await updateTimer($,tick,t);}finally{if(isCurrent(t))timerBusy=false;}});}
 }
 async function activate($,drawing=false){if(initialized)return;if(initializing)return initializing;initializing=(async()=>{
  const commands=await $.command.list();if(commands.some(c=>c.name==='focus-cat'&&c.plugin!=='focus-cat-companion'&&!c.plugin?.startsWith('focus-cat-companion@'))){initialized=true;return;}
  await $.command.register({name:'focus-cat',description:'Cat pomodoro: start/pause/restart/reset/next; character a/b/status; motion on/off; show/hide/status',argumentHint:'<action>',immediate:true});
- sessionId=await $.session.id();timerKey='timer:'+sessionId;const now=await $.clock.now(),saved=await $.store.get(timerKey),held=(await $.state.get({plugin:'focus-cat-companion',key:'timerRuntime',id:sessionId})).value;
+ sessionId=await $.session.id();timerKey='timer:'+sessionId;const now=await $.clock.now(),saved=await $.store.get(timerKey),record=await $.state.get({plugin:'focus-cat-companion',key:'timerRuntime',id:sessionId}),held=record.value;timerVersion=record.version;
  timer=createState(saved,now);if(held&&held.version===1&&['running','paused','idle','ready'].includes(held.status)){const restored=createState(held,now);if(restored.phase===held.phase&&restored.remaining===held.remaining){timer=restored;timer.status=held.status;if(timer.status==='running'){timer.last=held.last;tick(timer,now);}}}
- lastTimer=saved?JSON.stringify(snapshot(timer)):'';lastHostTimer=held?JSON.stringify({...timer,last:timer.status==='running'?timer.last:0}):'';
+ lastTimer=saved?JSON.stringify(saved):'';lastHostTimer=held?JSON.stringify(held):'';
  const previous=await $.state.get({plugin:'focus-cat-companion',key:'companionRuntime',id:sessionId});restoreCat(previous.value,true);const prefs=preferenceRecord(await $.store.get('companion:preferences'));if(typeof prefs.reduced==='boolean')cat.reduced=prefs.reduced;cat.character=selectedCharacter(Object.prototype.hasOwnProperty.call(prefs,'character')?prefs.character:cat.character);cat.visible=timer.visible;
  enabled=true;initialized=true;if(drawing)deferredCommit($);else await claimRuntime($);syncClocks($);
 })();try{await initializing;}finally{initializing=null;}}
@@ -97,7 +132,7 @@ async function change($){const t=identity();if(!claimed)await claimRuntime($,t);
 async function toolFinished($,e){if(!enabled||e.agent_id)return;if(typeof e.tool_use_id==='string')cat.tools.delete(e.tool_use_id);else{const matching=[...cat.tools].filter(([,name])=>name===e.tool_name);if(matching.length===1)cat.tools.delete(matching[0][0]);}if(![...cat.tools.values()].includes(e.tool_name))cat.waiting.delete(e.tool_name);await change($);}
 export function register(on){
  on('session.start',async($,e,next)=>{await activate($);return next(e);});
- on('classic.SessionStart',{source:['clear','resume','fork']},async($,e,next)=>{if(initialized&&enabled&&await $.session.id()!==sessionId){const t=identity(),now=await $.clock.now();if(await ownsRuntime($,t)){act(t.timer,'pause',now);await saveTimer($,t);stopDance(cat);cat.completionEligible=false;cat.active=false;cat.waiting.clear();cat.tools.clear();await persistCat($);}cancelClocks();timer=null;cat=createCompanion();sessionId=null;timerKey=null;initialized=false;initializing=null;enabled=false;claimed=false;timerBusy=false;owner=crypto.randomUUID();runtimeVersion=0;lastTimer='';lastHostTimer='';lastCat='';queue=Promise.resolve();preferencesQueue=Promise.resolve();runtimeQueue=Promise.resolve();await activate($);}return next(e);});
+ on('classic.SessionStart',{source:['clear','resume','fork']},async($,e,next)=>{if(initialized&&enabled&&await $.session.id()!==sessionId){const t=identity();interruptTimerUpdates();if(await ownsRuntime($,t)){await updateTimer($,(state,now)=>act(state,'pause',now),t);stopDance(cat);cat.completionEligible=false;cat.active=false;cat.waiting.clear();cat.tools.clear();await persistCat($);}cancelClocks();timer=null;cat=createCompanion();sessionId=null;timerKey=null;initialized=false;initializing=null;enabled=false;claimed=false;timerBusy=false;owner=crypto.randomUUID();runtimeVersion=0;timerVersion=0;lastTimer='';lastHostTimer='';lastCat='';queue=Promise.resolve();preferencesQueue=Promise.resolve();runtimeQueue=Promise.resolve();timerQueue=Promise.resolve();await activate($);}return next(e);});
  on('turn.start',async($,e,next)=>{await activate($);if(!enabled)return next(e);stopDance(cat);cat.turnId=e.turnId;cat.completionEligible=true;cat.active=true;cat.reason='walking';cat.waiting.clear();cat.tools.clear();await change($);const t=identity();try{return await next(e);}catch(error){if(isCurrent(t)&&cat.turnId===e.turnId){stopDance(cat);cat.active=false;cat.reason='error';cat.completionEligible=false;cat.lastCompletedTurnId=e.turnId;cat.waiting.clear();cat.tools.clear();await change($);}throw error;}});
  on('turn.step',async function*($,e,next){await activate($);if(enabled&&!e.agentId&&!(cat.lastCompletedTurnId===e.turnId&&!cat.completionEligible)){stopDance(cat);cat.turnId=e.turnId;cat.completionEligible=true;cat.active=true;cat.reason='walking';cat.waiting.clear();cat.tools.clear();await change($);}return yield*next(e);});
  on('turn.complete',async($,e,next)=>{await activate($);if(enabled&&!e.agentId&&cat.turnId===e.turnId&&(e.reason!=='answer'||e.isAborted)&&(cat.danceActive||cat.danceHeld)){stopDance(cat);cat.active=false;cat.reason=e.reason;cat.completionEligible=false;await change($);}if(enabled&&!e.agentId&&(cat.turnId===null||e.turnId===cat.turnId)&&cat.lastCompletedTurnId!==e.turnId){
@@ -115,7 +150,7 @@ export function register(on){
  if(action==='character a'||action==='character b'){const t=identity(),character=action.slice(-1);if(!await savePreferences($,{character},t)||!isCurrent(t))return{text:'Cat preferences changed during reload; run the command again.'};return{text:'Cat character '+character.toUpperCase()+'.'};}
  if(action==='motion on'||action==='motion off'){const t=identity(),reduced=action==='motion off';if(!await savePreferences($,{reduced},t)||!isCurrent(t))return{text:'Cat preferences changed during reload; run the command again.'};return{text:'Cat motion '+(reduced?'off':'on')+'.'};}
  if(!['start','pause','restart','reset','next','show','hide','status'].includes(action))return{text:'Usage: /focus-cat start | pause | restart | reset | next | show | hide | status | character a | character b | character status | motion on | motion off'};
- const message=act(timer,action,await $.clock.now());cat.visible=timer.visible;await saveTimer($);await change($);return{text:message||`${clockText(timer)} ${timer.phase} / ${timer.status}; reply ${pose(cat)}`};});
+ const result=await updateTimer($,(state,now)=>act(state,action,now));if(!result.ok)return{text:result.committed?'Timer change was applied, but persistence could not be confirmed; check /focus-cat status before retrying.':'Timer state changed while saving; run the command again.'};await change($);return{text:result.message||`${clockText(timer)} ${timer.phase} / ${timer.status}; reply ${pose(cat)}`};});
  on('ui.render',{component:'AbovePrompt'},async($,e,next)=>{const other=await next(e);if(e.surface!=='terminal')return other;await activate($,true);if(!enabled)return other;
  const held=await $.state.get({plugin:'focus-cat-companion',key:'companionRuntime',id:sessionId});if(held.value?.owner===owner&&held.version>runtimeVersion){restoreCat(held.value);runtimeVersion=held.version;lastCat=JSON.stringify(catData());}
  // AbovePrompt's native core is empty and arrives as an opaque engine ref.
@@ -133,5 +168,5 @@ export function register(on){
  if(layout.timerText)children.push(Box({width:7,height:4,children:[Text({wrap:'truncate',children:['  '+layout.timerText]})]}));
  return Box({key:'focus-cat-band',height:4,width:layout.columns,flexDirection:'row',flexShrink:0,children});
  });
- on('session.end',async($,e,next)=>{if(initialized&&enabled){const t=identity(),now=await $.clock.now();if(await ownsRuntime($,t)){stopDance(cat);cat.completionEligible=false;cat.active=false;cat.waiting.clear();cat.tools.clear();act(t.timer,'pause',now);syncClocks($);await saveTimer($,t);await persistCat($);}}return next(e);});
+ on('session.end',async($,e,next)=>{if(initialized&&enabled){const t=identity();interruptTimerUpdates();if(await ownsRuntime($,t)){stopDance(cat);cat.completionEligible=false;cat.active=false;cat.waiting.clear();cat.tools.clear();await updateTimer($,(state,now)=>act(state,'pause',now),t);await persistCat($);}}return next(e);});
 }
