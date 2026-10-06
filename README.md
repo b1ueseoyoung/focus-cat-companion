@@ -36,7 +36,9 @@ claude --plugin-dir "$PWD"
 
 높이가 4줄 미만 또는 폭이 8열 미만이면 시간만 표시합니다. 8~14열에서는 고양이만, 15열 이상에서는 시간도 표시합니다. Raster의 투명 픽셀은 터미널 기본 배경을 유지합니다. 화면에서 보이는 픽셀 비율은 터미널 글꼴에 따라 달라집니다.
 
-미리보기: [PNG](preview/simulated-events-native-raster.png), [GIF](preview/simulated-events-native-raster.gif). 실제 Terminal의 공식 Raster에 **모의 이벤트를 표시한 화면**입니다. 실제 모델 턴의 촬영이나 검증이 아닙니다. GIF는 데모 전체를 반복하며 실제 완료 춤은 한 번만 재생합니다. **실제 모델 턴·도구 승인·OS 절전·Windows/Linux 네이티브 동작은 미검증**입니다. 자세한 검증 범위는 [VERIFICATION](docs/VERIFICATION.md)에 있습니다.
+미리보기: [PNG](preview/simulated-events-native-raster.png), [GIF](preview/simulated-events-native-raster.gif). 실제 Terminal의 공식 Raster에 **모의 이벤트를 표시한 화면**이며 실제 모델 턴의 촬영 자료가 아닙니다. GIF는 데모 전체를 반복하며 실제 완료 춤은 한 번만 재생합니다.
+
+**사용자 확인(user-verified, macOS, 2026-10-06):** 사용자가 실제 모델 답변 중 고양이 동작을 직접 확인했습니다. 에이전트가 해당 실제 턴을 직접 관찰한 것은 아닙니다. 실제 완료 춤의 정확한 시간·중복 방지, 도구 승인 대기·OS 절전·Windows/Linux 네이티브 동작은 이 사용자 확인에 포함되지 않습니다. 자세한 검증 범위는 [VERIFICATION](docs/VERIFICATION.md)에 있습니다.
 
 런타임에는 자산 로딩이나 Python이 필요 없습니다. 소스만 바꿨으면 다음으로 엔트리를 빌드합니다.
 

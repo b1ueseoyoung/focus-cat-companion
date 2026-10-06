@@ -11,7 +11,14 @@
     "minimumRegenerationMatches": true,
     "previousTestsPassed": 85,
     "fullSuiteRepeatedForPackaging": false,
-    "realModelTurnVerified": false
+    "agentObservedRealModelTurn": false,
+    "userVerifiedMacOSModelReplyMotion": {
+      "status": "user-verified",
+      "date": "2026-10-06",
+      "platform": "macOS",
+      "scope": "Cat motion during actual model replies",
+      "agentObserved": false
+    }
   },
   "files": [
     {
@@ -31,8 +38,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 4915,
-      "sha256": "4c204c268a12936c118fc35191c78946d6cea9f3764f6706e6633eb18123adab"
+      "bytes": 5191,
+      "sha256": "a442ad1b8dc4951d1c15d0feef78da33c5a82ab1b15fdc29dd17b01e2d2f1038"
     },
     {
       "path": "THIRD_PARTY_NOTICES",
@@ -406,8 +413,8 @@
     },
     {
       "path": "docs/VERIFICATION.md",
-      "bytes": 2840,
-      "sha256": "bc81b8e47b6c06d4fbeae1fb595af11fe4be08ccb58e520ce8ccb0a907be91a4"
+      "bytes": 3311,
+      "sha256": "cdf622c347a6cff3dca845d7cd881c323a81c5bda85108075816092bc62bffd7"
     },
     {
       "path": "hooks/hooks.json",
