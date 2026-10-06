@@ -3,7 +3,7 @@
   "version": "0.6.0",
   "license": "MIT",
   "rightsHolder": "이서영",
-  "runtimeSha256": "381826745922ba9f01fcb47e8b7d067ff7527b900cdc87b26ef30f32623d7ca5",
+  "runtimeSha256": "9ca5f55442806b849b411b2103f71d60f2aca2ecea76b39267993d82dc0759c1",
   "privacyExclusionsVerified": true,
   "verification": {
     "strictErrors": 0,
@@ -19,7 +19,7 @@
       "scope": "Cat motion during actual model replies",
       "agentObserved": false
     },
-    "currentTestsPassed": 106,
+    "currentTestsPassed": 124,
     "fullSuiteRepeatedForFix": true
   },
   "files": [
@@ -40,8 +40,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 5527,
-      "sha256": "355050f249bb2c1ffd5bec93a82bbde973cb0f3f818eacf2375ec6377fc1136c"
+      "bytes": 6231,
+      "sha256": "288ae31ab08d8cf89751c83bd24aa45f3e53638bbe1bc93d2c5e4cf8cc7f0095"
     },
     {
       "path": "THIRD_PARTY_NOTICES",
@@ -415,8 +415,8 @@
     },
     {
       "path": "docs/VERIFICATION.md",
-      "bytes": 4600,
-      "sha256": "b567bf9beb7b64b5ba7c4201383591ce9321fea85a0ded436aa97dfc84dafc41"
+      "bytes": 5336,
+      "sha256": "1b912b2dfe906cc8e79756663c95d4027fd9b483394221f8966456476245f008"
     },
     {
       "path": "hooks/hooks.json",
@@ -425,13 +425,13 @@
     },
     {
       "path": "hooks/integration.js",
-      "bytes": 20424,
-      "sha256": "84c802a2194ca1614d6668177a6c7ebc0704a62078054e8f9d4e1cac8b3ed954"
+      "bytes": 23993,
+      "sha256": "d33d985d8690af58da795931ad51b930a59198a48f89f6841c5f42f7552c7d2f"
     },
     {
       "path": "hooks/register.js",
-      "bytes": 38185,
-      "sha256": "381826745922ba9f01fcb47e8b7d067ff7527b900cdc87b26ef30f32623d7ca5"
+      "bytes": 41774,
+      "sha256": "9ca5f55442806b849b411b2103f71d60f2aca2ecea76b39267993d82dc0759c1"
     },
     {
       "path": "preview/assets/native-four-row-dance-contact-sheet.png",
@@ -485,8 +485,8 @@
     },
     {
       "path": "src/companion-core.js",
-      "bytes": 1675,
-      "sha256": "beda8762aa421e565b0d79687fafba716c4993e4b4e4ed1301edab0b8dfd8a4e"
+      "bytes": 1695,
+      "sha256": "e4ad0621c940a6395cefc6b701a3d780816f3cbb77caab3286890c6e0db4adea"
     },
     {
       "path": "src/native-raster.js",
@@ -497,6 +497,11 @@
       "path": "src/timer-core.js",
       "bytes": 2262,
       "sha256": "b964907742df9c9ee1fb04272675e044355058fe2618fe3f6a84c748d54560a0"
+    },
+    {
+      "path": "tests/approval-integration.test.ts",
+      "bytes": 8584,
+      "sha256": "1f8c89793275acab22e35c9baaf8ac001fdb97a559b934ecdd01e72fe3939593"
     },
     {
       "path": "tests/character-selection.test.js",
@@ -530,8 +535,8 @@
     },
     {
       "path": "tests/reload.test.js",
-      "bytes": 18993,
-      "sha256": "431bd6fb6af8438eaea65da5f6789359d95c0988609c5dfc03c99caf2306903b"
+      "bytes": 27075,
+      "sha256": "161ca5283ece3e207f4f72681006b149509165f03a7e1cdb71ca5406a6ccce97"
     },
     {
       "path": "tests/timer-concurrency.test.js",
@@ -545,8 +550,8 @@
     },
     {
       "path": "types/runtime.d.ts",
-      "bytes": 596,
-      "sha256": "415775284ed30cb0fa74b3a8452ef23ae7b96a657cb152476efbeec9c0cd19b8"
+      "bytes": 649,
+      "sha256": "4ebf1b1ac6bb5f59d321df128a85aa8a18ea503e92348ac6ac4b7bc381d0b9ec"
     }
   ]
 }

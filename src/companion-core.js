@@ -1,6 +1,6 @@
 // Approved A: the exact original 8x8 sample in four terminal rows.
 export const CAT_WIDTH=8,CAT_ROWS=4,CAT_FRAMES=4,WALK_INTERVAL_MS=240,DANCE_FRAMES=8,DANCE_INTERVAL_MS=120;
-export function createCompanion(){return {turnId:null,active:false,reason:'idle',waiting:new Set(),tools:new Map(),x:0,direction:1,frame:0,turnHold:0,columns:80,rows:4,visible:true,reduced:false,character:'a',danceActive:false,danceHeld:false,danceFrame:0,completionEligible:false,lastCompletedTurnId:null};}
+export function createCompanion(){return {turnId:null,active:false,reason:'idle',waiting:new Set(),tools:new Map(),approvals:new Map(),x:0,direction:1,frame:0,turnHold:0,columns:80,rows:4,visible:true,reduced:false,character:'a',danceActive:false,danceHeld:false,danceFrame:0,completionEligible:false,lastCompletedTurnId:null};}
 export function pose(s){return s.danceActive?'celebrating':s.active?(s.waiting.size?'approval':'walking'):s.reason;}
 export function stopDance(s,freeze=false){s.danceActive=false;s.danceHeld=freeze;if(!freeze)s.danceFrame=0;}
 export function startDance(s){

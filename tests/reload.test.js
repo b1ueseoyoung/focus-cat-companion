@@ -4,7 +4,7 @@ import {AsyncLocalStorage} from 'node:async_hooks';
 let loadId=0;
 function host(options={}){const saved=new Map(),runtime=new Map(),timers=new Map(),readSnapshots=new Map(),reads=new AsyncLocalStorage();let now=0,drawing=false,id=0,hooks=new Map(),session='isolated-reload',nextNow=null,nextCompanionWrite=null;const addr=r=>r.key+':'+r.id,dispatch=fn=>options.snapshotReads?reads.run(new Map(),fn):fn();const $={command:{list:async()=>[{name:'focus-cat',plugin:'focus-cat-companion@inline'}],register:async()=>{}},session:{id:async()=>session},store:{get:async k=>saved.get(k),set:async(k,v)=>saved.set(k,structuredClone(v))},state:{get:async r=>{const address=addr(r),snapshot=reads.getStore();if(snapshot?.has(address))return snapshot.get(address);let value=runtime.get(address)||{value:undefined,version:0};if(readSnapshots.has(address)){value=readSnapshots.get(address);readSnapshots.delete(address);}if(snapshot){value=structuredClone(value);snapshot.set(address,value);}return value;},set:async(r,v,o={})=>{if(drawing)throw Error('write during drawing');const old=runtime.get(addr(r))||{version:0};if(o.ifVersion!==undefined&&old.version!==o.ifVersion)return{isSet:false,version:old.version};const version=old.version+1;runtime.set(addr(r),{value:structuredClone(v),version});if(r.key==='companionRuntime'&&nextCompanionWrite){const blocked=nextCompanionWrite;nextCompanionWrite=null;blocked.enter();await blocked.result;}return{isSet:true,version};}},clock:{now:async()=>{if(nextNow){const wait=nextNow;nextNow=null;wait.enter();return await wait.result;}return now;},every:(ms,fn)=>{const key=++id;timers.set(key,{ms,fn:()=>dispatch(fn),at:now+ms,repeat:true});return{cancel:()=>timers.delete(key)}},after:(ms,fn)=>{const key=++id;timers.set(key,{ms,fn:()=>dispatch(fn),at:now+ms,repeat:false});return{cancel:()=>timers.delete(key)}}},ui:{invalidate:()=>{},resolve:()=>({Box:p=>({type:'Box',props:p,children:p.children}),Text:p=>({type:'Text',props:p,children:p.children}),Raster:p=>({type:'Raster',props:p,children:[]})})}};
 async function load(){timers.clear();hooks=new Map();const m=await import(resolve(import.meta.dir,'../hooks/register.js')+'?isolated='+ ++loadId);m.register((name,...args)=>hooks.set(name,args.at(-1)));}
-const fire=(name,e={},next=async()=>({unchanged:true}))=>dispatch(()=>hooks.get(name)($,e,next));
+const fire=(name,e={},next=async()=>({unchanged:true}))=>dispatch(()=>{const tracked=async event=>{const result=await next(event);tracked.trace=next.trace??[{index:1}];return result;};tracked.trace=[];return hooks.get(name)($,e,tracked);});
 async function render(working=false,width=40,rows=4){drawing=true;try{return await fire('ui.render',{surface:'terminal',props:{hasSurvey:false,isWorking:working,bodyColumns:width,maxRows:rows}},async()=>({type:'Box',props:{height:0},children:[]}));}finally{drawing=false;}}
 async function advance(ms){const end=now+ms;while(true){const entry=[...timers].sort((a,b)=>a[1].at-b[1].at)[0];if(!entry||entry[1].at>end)break;now=entry[1].at;if(!entry[1].repeat)timers.delete(entry[0]);await entry[1].fn();if(timers.has(entry[0]))entry[1].at=now+entry[1].ms;}now=end;}
 function blockNextNow(){let enter,release;const entered=new Promise(r=>enter=r),result=new Promise(r=>release=r);nextNow={enter,result};return{entered,release};}
@@ -115,4 +115,73 @@ test('a previous dance callback held inside CAS cannot advance the next complete
  blocked.release();await Promise.all([oldTick,newStart,newComplete]);
  expect(h.companion().turnId).toBe('new-dance');expect(h.companion().lastCompletedTurnId).toBe('new-dance');expect(h.companion().danceActive).toBe(true);expect(h.companion().danceFrame).toBe(0);
  expect([...h.timers.values()].map(clock=>clock.ms)).toEqual([120]);await h.advance(960);expect(h.companion().danceActive).toBe(false);expect(h.timers.size).toBe(0);
+});
+
+async function approvalTool(h,id,input,initial=input){
+ let enter,release;const entered=new Promise(resolve=>enter=resolve),result=new Promise(resolve=>release=resolve);
+ const pending=h.fire('tool.call',{tool:'Bash',tool_use_id:id,...initial},async()=>{await h.fire('tool.check',{tool:'Bash',tool_use_id:id,input},async()=>({decision:'ask'}));enter();return result;});
+ await entered;return{pending,release};
+}
+for(const first of ['prompted','unprompted'])test('distinct-input same-name calls clear only their own approval when '+first+' finishes first',async()=>{
+ const h=host();await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'parallel'});await h.render(true);
+ const a=await approvalTool(h,'unprompted',{command:'synthetic long'}),b=await approvalTool(h,'prompted',{command:'synthetic short'});
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{command:'synthetic short'}});
+ expect(h.companion().approvals[0].ids).toEqual(['prompted']);
+ await h.fire('classic.PostToolUse',{tool_name:'Bash',tool_use_id:first});
+ const chosen=first==='prompted'?b:a;chosen.release({kept:first});expect(await chosen.pending).toEqual({kept:first});
+ const before=h.companion().x;await h.advance(480);
+ if(first==='prompted'){expect(h.companion().waiting).toEqual([]);expect(h.companion().x).not.toBe(before);}else{expect(h.companion().waiting).toEqual(['Bash']);expect(h.companion().x).toBe(before);}
+ const remaining=first==='prompted'?a:b;remaining.release({kept:'last'});await remaining.pending;expect(h.companion().waiting).toEqual([]);
+});
+for(const behavior of ['allow','deny'])test('explicit '+behavior+' settles only its own request, even with identical parallel inputs',async()=>{
+ const h=host();await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'decisions'});await h.render(true);
+ const input={command:'synthetic identical'},a=await approvalTool(h,'a',input),b=await approvalTool(h,'b',input);
+ let entered,settle;const reached=new Promise(resolve=>entered=resolve),answer=new Promise(resolve=>settle=resolve);
+ const request=h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:input},()=>{entered();return answer;});await reached;
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:input});expect(h.companion().approvals.length).toBe(2);
+ const result={decision:{behavior,...behavior==='deny'?{message:'synthetic denial'}:{updatedInput:input}}};settle(result);expect(await request).toBe(result);
+ expect(h.companion().approvals.length).toBe(1);const before=h.companion().x;await h.advance(480);expect(h.companion().x).toBe(before);
+ a.release({kept:'a'});await a.pending;expect(h.companion().waiting).toEqual(['Bash']);b.release({kept:'b'});await b.pending;expect(h.companion().waiting).toEqual([]);
+});
+test('tool.check uses the permission input after rewriting and persists no tool arguments or fingerprints',async()=>{
+ const h=host();await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'rewrite'});await h.render(true);
+ const a=await approvalTool(h,'a',{command:'synthetic-original'}),b=await approvalTool(h,'b',{command:'synthetic-rewritten',nested:{b:2,a:1}},{command:'synthetic-original'});
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{nested:{a:1,b:2},command:'synthetic-rewritten'}});
+ expect(h.companion().approvals[0].ids).toEqual(['b']);expect(JSON.stringify([...h.runtime])).not.toContain('synthetic-');expect(JSON.stringify([...h.saved])).not.toContain('synthetic-');
+ expect(Object.keys(h.companion().approvals[0]).sort()).toEqual(['ids','token','tool']);
+ await h.fire('classic.PostToolUseFailure',{tool_name:'Bash',tool_use_id:'b'});expect(h.companion().waiting).toEqual([]);
+ b.release({kept:'b'});await b.pending;a.release({kept:'a'});await a.pending;
+});
+test('identical input matching keeps its uncertain candidate group until all candidates finish',async()=>{
+ const h=host();await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'ambiguous'});await h.render(true);
+ const input={command:'synthetic identical'},a=await approvalTool(h,'a',input),b=await approvalTool(h,'b',input);
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:input});expect(h.companion().approvals[0].ids).toEqual(['a','b']);
+ await h.fire('classic.PermissionDenied',{tool_name:'Bash',tool_use_id:'b'});expect(h.companion().approvals[0].ids).toEqual(['a']);expect(h.companion().waiting).toEqual(['Bash']);
+ a.release({kept:'a'});await a.pending;expect(h.companion().waiting).toEqual([]);b.release({kept:'b'});await b.pending;
+});
+test('request identity survives reload and old tool completions cannot change the new owner',async()=>{
+ const h=host({snapshotReads:true});await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'reload-approval'});await h.render(true);
+ const a=await approvalTool(h,'unprompted',{command:'synthetic long'}),b=await approvalTool(h,'prompted',{command:'synthetic short'});
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{command:'synthetic short'}});const token=h.companion().approvals[0].token;
+ await h.load();await h.render(true);await h.advance(1);expect(h.companion().approvals).toEqual([{token,tool:'Bash',ids:['prompted']}]);
+ await h.fire('classic.PostToolUse',{tool_name:'Bash',tool_use_id:'prompted'});expect(h.companion().waiting).toEqual([]);const before=h.companion().x;await h.advance(480);expect(h.companion().x).not.toBe(before);
+ const stable=structuredClone([...h.runtime]);a.release({kept:'old a'});b.release({kept:'old b'});await Promise.all([a.pending,b.pending]);expect([...h.runtime]).toEqual(stable);
+});
+test('an old permission decision cannot clear a later turn request and tool errors still propagate',async()=>{
+ const h=host();await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'old'});await h.render(true);
+ const a=await approvalTool(h,'old-call',{command:'synthetic old'});let enter,release;const reached=new Promise(resolve=>enter=resolve),answer=new Promise(resolve=>release=resolve);
+ const request=h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{command:'synthetic old'}},()=>{enter();return answer;});await reached;
+ await h.fire('turn.abort',{turnId:'old'});await h.fire('turn.start',{turnId:'new'});const b=await approvalTool(h,'new-call',{command:'synthetic new'});
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{command:'synthetic new'}});const current=structuredClone(h.companion().approvals);
+ release({decision:{behavior:'allow'}});await request;expect(h.companion().approvals).toEqual(current);a.release({kept:'old'});await a.pending;expect(h.companion().approvals).toEqual(current);
+ b.release({kept:'new'});await b.pending;const failure=Error('synthetic failure');
+ await expect(h.fire('tool.call',{tool:'Bash',tool_use_id:'error'},async()=>{await h.fire('classic.PermissionRequest',{tool_name:'Bash'});throw failure;})).rejects.toBe(failure);expect(h.companion().waiting).toEqual([]);
+});
+
+for(const trace of [[],[{index:2}]])test('unproven final permission decisions keep waiting until tool completion: '+JSON.stringify(trace),async()=>{
+ const h=host();await h.load();await h.fire('session.start');await h.fire('turn.start',{turnId:'uncertain-chain'});await h.render(true);
+ const pending=await approvalTool(h,'call',{command:'synthetic pending'}),decision=Object.assign(async()=>({decision:{behavior:'allow'}}),{trace});
+ await h.fire('classic.PermissionRequest',{tool_name:'Bash',tool_input:{command:'synthetic pending'}},decision);
+ expect(h.companion().waiting).toEqual(['Bash']);const before=h.companion().x;await h.advance(480);expect(h.companion().x).toBe(before);
+ pending.release({kept:true});await pending.pending;expect(h.companion().waiting).toEqual([]);await h.advance(480);expect(h.companion().x).not.toBe(before);
 });

@@ -12,11 +12,13 @@ export function pixelLayout(timer,cat,width,maxRows){
 
 let timer=null,cat=createCompanion(),timerClock=null,catClock=null,catClockMode=null,catClockTurnId=null,catClockGeneration=0,timerKey=null,sessionId=null,initialized=false,initializing=null,enabled=false,owner=crypto.randomUUID(),runtimeVersion=0,lastTimer='',lastHostTimer='',lastCat='',timerBusy=false,queue=Promise.resolve(),preferencesQueue=Promise.resolve(),runtimeQueue=Promise.resolve(),commitClock=null,claimed=false;
 let timerQueue=Promise.resolve(),timerVersion=0,timerEpoch=0;
+// Permission inputs stay transient; neither raw arguments nor their hashes are persisted.
+const toolInputs=new Map();
 const redraw=$=>$.ui.invalidate('ui.render');
 const selectedCharacter=value=>value==='b'?'b':'a';
 const preferenceRecord=value=>value&&typeof value==='object'&&!Array.isArray(value)?value:{};
 const preferenceKeys={character:'companion:character',reduced:'companion:reduced'};
-const catData=()=>({version:1,owner,turnId:cat.turnId,active:cat.active,reason:cat.reason,waiting:[...cat.waiting],tools:[...cat.tools],x:cat.x,direction:cat.direction,frame:cat.frame,turnHold:cat.turnHold,reduced:cat.reduced,character:selectedCharacter(cat.character),danceActive:cat.danceActive,danceHeld:cat.danceHeld,danceFrame:cat.danceFrame,completionEligible:cat.completionEligible,lastCompletedTurnId:cat.lastCompletedTurnId});
+const catData=()=>({version:1,owner,turnId:cat.turnId,active:cat.active,reason:cat.reason,waiting:[...cat.waiting],tools:[...cat.tools],approvals:[...cat.approvals].map(([token,v])=>({token,tool:v.tool,ids:[...v.ids]})),x:cat.x,direction:cat.direction,frame:cat.frame,turnHold:cat.turnHold,reduced:cat.reduced,character:selectedCharacter(cat.character),danceActive:cat.danceActive,danceHeld:cat.danceHeld,danceFrame:cat.danceFrame,completionEligible:cat.completionEligible,lastCompletedTurnId:cat.lastCompletedTurnId});
 const identity=()=>({owner,id:sessionId,key:timerKey,timer});
 const isCurrent=t=>enabled&&initialized&&t.owner===owner&&t.id===sessionId&&t.timer===timer;
 function cancelClocks(){if(catClock)catClock.cancel();if(timerClock)timerClock.cancel();if(commitClock)commitClock.cancel();catClock=null;catClockMode=null;catClockTurnId=null;catClockGeneration++;timerClock=null;commitClock=null;}
@@ -43,7 +45,44 @@ function writeCompanionRuntime($,t,{claim=false,version=0,changedOnly=false}={})
  });
  runtimeQueue=work;return work;
 }
-function restoreCat(v,reloading=false){if(!v||v.version!==1||typeof v.active!=='boolean')return;cat.turnId=typeof v.turnId==='string'?v.turnId:null;cat.active=v.active;cat.reason=String(v.reason||'idle');cat.waiting=new Set(Array.isArray(v.waiting)?v.waiting.filter(x=>typeof x==='string'):[]);cat.tools=new Map(Array.isArray(v.tools)?v.tools:[]);cat.x=Number.isFinite(v.x)?Math.max(0,v.x):0;cat.direction=v.direction===-1?-1:1;cat.frame=Number.isInteger(v.frame)&&v.frame>=0&&v.frame<CAT_FRAMES?v.frame:0;cat.turnHold=v.turnHold===1?1:0;cat.reduced=v.reduced===true;cat.character=selectedCharacter(v.character);cat.danceActive=!reloading&&v.danceActive===true;cat.danceHeld=!reloading&&v.danceHeld===true;cat.danceFrame=!reloading&&Number.isInteger(v.danceFrame)&&v.danceFrame>=0&&v.danceFrame<DANCE_FRAMES?v.danceFrame:0;cat.lastCompletedTurnId=typeof v.lastCompletedTurnId==='string'?v.lastCompletedTurnId:null;cat.completionEligible=v.completionEligible===true&&cat.lastCompletedTurnId!==cat.turnId&&(!reloading||cat.active);}
+function restoreCat(v,reloading=false){if(!v||v.version!==1||typeof v.active!=='boolean')return;cat.turnId=typeof v.turnId==='string'?v.turnId:null;cat.active=v.active;cat.reason=String(v.reason||'idle');cat.waiting=new Set(Array.isArray(v.waiting)?v.waiting.filter(x=>typeof x==='string'):[]);cat.tools=new Map(Array.isArray(v.tools)?v.tools.filter(v=>Array.isArray(v)&&typeof v[0]==='string'&&typeof v[1]==='string'):[]);restoreApprovals(v);cat.x=Number.isFinite(v.x)?Math.max(0,v.x):0;cat.direction=v.direction===-1?-1:1;cat.frame=Number.isInteger(v.frame)&&v.frame>=0&&v.frame<CAT_FRAMES?v.frame:0;cat.turnHold=v.turnHold===1?1:0;cat.reduced=v.reduced===true;cat.character=selectedCharacter(v.character);cat.danceActive=!reloading&&v.danceActive===true;cat.danceHeld=!reloading&&v.danceHeld===true;cat.danceFrame=!reloading&&Number.isInteger(v.danceFrame)&&v.danceFrame>=0&&v.danceFrame<DANCE_FRAMES?v.danceFrame:0;cat.lastCompletedTurnId=typeof v.lastCompletedTurnId==='string'?v.lastCompletedTurnId:null;cat.completionEligible=v.completionEligible===true&&cat.lastCompletedTurnId!==cat.turnId&&(!reloading||cat.active);}
+// Keep the public pose/clock guard as names, derived from independent requests.
+function refreshWaiting(){cat.waiting=new Set([...cat.approvals.values()].map(v=>v.tool));}
+function restoreApprovals(v){
+ cat.approvals=new Map();
+ if(Array.isArray(v.approvals)){
+  for(const a of v.approvals){if(!a||typeof a.token!=='string'||typeof a.tool!=='string'||!Array.isArray(a.ids))continue;const ids=a.ids.filter(id=>typeof id==='string'&&cat.tools.get(id)===a.tool);if(ids.length||a.ids.length===0)cat.approvals.set(a.token,{tool:a.tool,ids});}
+ }else{
+  // Older modules kept only a tool name. Preserve that uncertainty on reload.
+  for(const tool of cat.waiting)cat.approvals.set(crypto.randomUUID(),{tool,ids:[...cat.tools].filter(([,name])=>name===tool).map(([id])=>id)});
+ }
+ refreshWaiting();
+}
+function clearCalls(){cat.waiting.clear();cat.tools.clear();cat.approvals.clear();toolInputs.clear();}
+function finishCall(key,tool){
+ if(typeof key==='string'){cat.tools.delete(key);toolInputs.delete(key);}
+ for(const [token,request] of cat.approvals){
+  if(request.ids.includes(key)){request.ids=request.ids.filter(id=>id!==key);if(!request.ids.length)cat.approvals.delete(token);}
+  else if(!request.ids.length&&request.tool===tool&&![...cat.tools.values()].includes(tool))cat.approvals.delete(token);
+ }
+ refreshWaiting();
+}
+function canonicalInput(value){
+ if(value===null||typeof value==='string'||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value))return JSON.stringify(value);
+ if(Array.isArray(value))return '['+value.map(canonicalInput).join(',')+']';
+ if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+canonicalInput(value[key])).join(',')+'}';
+ throw Error('Unmatchable tool input');
+}
+async function inputFingerprint(input){
+ try{const bytes=new TextEncoder().encode(canonicalInput(input)),digest=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('');}catch{return null;}
+}
+function approvalCandidates(tool,fingerprint){
+ const all=[...cat.tools].filter(([,name])=>name===tool).map(([id])=>id);
+ if(!fingerprint)return all;
+ // Unknown inputs can still be this request; never discard them to force a match.
+ const matching=all.filter(id=>!toolInputs.has(id)||toolInputs.get(id)===fingerprint);
+ return matching.length?matching:all;
+}
 function persistCat($){const t=identity();queue=queue.catch(()=>{}).then(()=>writeCompanionRuntime($,t,{changedOnly:true}));return queue;}
 async function restorePreferences($){
  const legacy=preferenceRecord(await $.store.get('companion:preferences'));
@@ -141,19 +180,34 @@ async function activate($,drawing=false){if(initialized)return;if(initializing)r
  enabled=true;initialized=true;if(drawing)deferredCommit($);else await claimRuntime($);syncClocks($);
 })();try{await initializing;}finally{initializing=null;}}
 async function change($){const t=identity();if(!claimed)await claimRuntime($,t);if(!await ownsRuntime($,t))return;syncClocks($);await persistCat($);if(isCurrent(t))redraw($);}
-async function toolFinished($,e){if(!enabled||e.agent_id)return;if(typeof e.tool_use_id==='string')cat.tools.delete(e.tool_use_id);else{const matching=[...cat.tools].filter(([,name])=>name===e.tool_name);if(matching.length===1)cat.tools.delete(matching[0][0]);}if(![...cat.tools.values()].includes(e.tool_name))cat.waiting.delete(e.tool_name);await change($);}
+async function toolFinished($,e){if(!enabled||e.agent_id)return;let key=e.tool_use_id;if(typeof key!=='string'){const matching=[...cat.tools].filter(([,name])=>name===e.tool_name);if(matching.length===1)key=matching[0][0];}finishCall(key,e.tool_name);await change($);}
 export function register(on){
  on('session.start',async($,e,next)=>{await activate($);return next(e);});
- on('classic.SessionStart',{source:['clear','resume','fork']},async($,e,next)=>{if(initialized&&enabled&&await $.session.id()!==sessionId){const t=identity();interruptTimerUpdates();if(await ownsRuntime($,t)){await updateTimer($,(state,now)=>act(state,'pause',now),t);stopDance(cat);cat.completionEligible=false;cat.active=false;cat.waiting.clear();cat.tools.clear();await persistCat($);}cancelClocks();timer=null;cat=createCompanion();sessionId=null;timerKey=null;initialized=false;initializing=null;enabled=false;claimed=false;timerBusy=false;owner=crypto.randomUUID();runtimeVersion=0;timerVersion=0;lastTimer='';lastHostTimer='';lastCat='';queue=Promise.resolve();preferencesQueue=Promise.resolve();runtimeQueue=Promise.resolve();timerQueue=Promise.resolve();await activate($);}return next(e);});
- on('turn.start',async($,e,next)=>{await activate($);if(!enabled)return next(e);stopDance(cat);cat.turnId=e.turnId;cat.completionEligible=true;cat.active=true;cat.reason='walking';cat.waiting.clear();cat.tools.clear();await change($);const t=identity();try{return await next(e);}catch(error){if(isCurrent(t)&&cat.turnId===e.turnId){stopDance(cat);cat.active=false;cat.reason='error';cat.completionEligible=false;cat.lastCompletedTurnId=e.turnId;cat.waiting.clear();cat.tools.clear();await change($);}throw error;}});
- on('turn.step',async function*($,e,next){await activate($);if(enabled&&!e.agentId&&!(cat.lastCompletedTurnId===e.turnId&&!cat.completionEligible)){stopDance(cat);cat.turnId=e.turnId;cat.completionEligible=true;cat.active=true;cat.reason='walking';cat.waiting.clear();cat.tools.clear();await change($);}return yield*next(e);});
+ on('classic.SessionStart',{source:['clear','resume','fork']},async($,e,next)=>{if(initialized&&enabled&&await $.session.id()!==sessionId){const t=identity();interruptTimerUpdates();if(await ownsRuntime($,t)){await updateTimer($,(state,now)=>act(state,'pause',now),t);stopDance(cat);cat.completionEligible=false;cat.active=false;clearCalls();await persistCat($);}cancelClocks();timer=null;cat=createCompanion();sessionId=null;timerKey=null;initialized=false;initializing=null;enabled=false;claimed=false;timerBusy=false;owner=crypto.randomUUID();runtimeVersion=0;timerVersion=0;lastTimer='';lastHostTimer='';lastCat='';queue=Promise.resolve();preferencesQueue=Promise.resolve();runtimeQueue=Promise.resolve();timerQueue=Promise.resolve();await activate($);}return next(e);});
+ on('turn.start',async($,e,next)=>{await activate($);if(!enabled)return next(e);stopDance(cat);cat.turnId=e.turnId;cat.completionEligible=true;cat.active=true;cat.reason='walking';clearCalls();await change($);const t=identity();try{return await next(e);}catch(error){if(isCurrent(t)&&cat.turnId===e.turnId){stopDance(cat);cat.active=false;cat.reason='error';cat.completionEligible=false;cat.lastCompletedTurnId=e.turnId;clearCalls();await change($);}throw error;}});
+ on('turn.step',async function*($,e,next){await activate($);if(enabled&&!e.agentId&&!(cat.lastCompletedTurnId===e.turnId&&!cat.completionEligible)){stopDance(cat);cat.turnId=e.turnId;cat.completionEligible=true;cat.active=true;cat.reason='walking';clearCalls();await change($);}return yield*next(e);});
  on('turn.complete',async($,e,next)=>{await activate($);if(enabled&&!e.agentId&&cat.turnId===e.turnId&&(e.reason!=='answer'||e.isAborted)&&(cat.danceActive||cat.danceHeld)){stopDance(cat);cat.active=false;cat.reason=e.reason;cat.completionEligible=false;await change($);}if(enabled&&!e.agentId&&(cat.turnId===null||e.turnId===cat.turnId)&&cat.lastCompletedTurnId!==e.turnId){
   const celebrate=cat.completionEligible&&cat.turnId===e.turnId&&e.reason==='answer'&&!e.isAborted&&!cat.waiting.size;
-  cat.active=false;cat.reason=e.reason;cat.completionEligible=false;cat.lastCompletedTurnId=e.turnId;cat.waiting.clear();cat.tools.clear();stopDance(cat);if(celebrate)startDance(cat);await change($);
+  cat.active=false;cat.reason=e.reason;cat.completionEligible=false;cat.lastCompletedTurnId=e.turnId;clearCalls();stopDance(cat);if(celebrate)startDance(cat);await change($);
  }return next(e);});
- on('turn.abort',async($,e,next)=>{await activate($);if(enabled&&e.turnId===cat.turnId){stopDance(cat);cat.active=false;cat.reason='aborted';cat.completionEligible=false;cat.lastCompletedTurnId=e.turnId;cat.waiting.clear();cat.tools.clear();await change($);}return next(e);});
- on('tool.call',async($,e,next)=>{await activate($);if(!enabled||e.agentId||!cat.active)return next(e);const t=identity(),turnId=cat.turnId,key=e.tool_use_id;cat.tools.set(key,e.tool);await persistCat($);try{return await next(e);}finally{if(isCurrent(t)&&cat.turnId===turnId){cat.tools.delete(key);if(![...cat.tools.values()].includes(e.tool))cat.waiting.delete(e.tool);await change($);}}});
- on('classic.PermissionRequest',async($,e,next)=>{await activate($);if(enabled&&!e.agent_id&&cat.active&&[...cat.tools.values()].includes(e.tool_name)){cat.waiting.add(e.tool_name);await change($);}return next(e);});
+ on('turn.abort',async($,e,next)=>{await activate($);if(enabled&&e.turnId===cat.turnId){stopDance(cat);cat.active=false;cat.reason='aborted';cat.completionEligible=false;cat.lastCompletedTurnId=e.turnId;clearCalls();await change($);}return next(e);});
+ on('tool.call',async($,e,next)=>{await activate($);if(!enabled||e.agentId||!cat.active)return next(e);const t=identity(),turnId=cat.turnId,key=e.tool_use_id;cat.tools.set(key,e.tool);await persistCat($);try{return await next(e);}finally{if(isCurrent(t)&&cat.turnId===turnId){finishCall(key,e.tool);await change($);}}});
+ on('tool.check',async($,e,next)=>{await activate($);const t=identity(),turnId=cat.turnId,key=e.tool_use_id;
+  if(enabled&&cat.active&&typeof key==='string'&&cat.tools.get(key)===e.tool){const fingerprint=await inputFingerprint(e.input);if(isCurrent(t)&&cat.turnId===turnId&&cat.tools.get(key)===e.tool){if(fingerprint)toolInputs.set(key,fingerprint);else toolInputs.delete(key);}}
+  return next(e);
+ });
+ on('classic.PermissionRequest',async($,e,next)=>{await activate($);if(!enabled||e.agent_id||!cat.active)return next(e);
+  const t=identity(),turnId=cat.turnId,fingerprint=await inputFingerprint(e.tool_input);
+  if(!isCurrent(t)||cat.turnId!==turnId||!cat.active)return next(e);
+  const ids=approvalCandidates(e.tool_name,fingerprint);if(!ids.length)return next(e);
+  const token=crypto.randomUUID();cat.approvals.set(token,{tool:e.tool_name,ids});refreshWaiting();await change($);
+  const result=await next(e);
+  // Trace indices are global to this chain, with index 0 outermost. Only a
+  // first downstream link at 1 proves no outer hook can still change the result.
+  const finalDecision=next.trace?.[0]?.index===1;
+  if(finalDecision&&(result?.decision?.behavior==='allow'||result?.decision?.behavior==='deny')&&isCurrent(t)&&cat.turnId===turnId&&cat.approvals.has(token)&&await ownsRuntime($,t)&&isCurrent(t)&&cat.turnId===turnId){cat.approvals.delete(token);refreshWaiting();await change($);}
+  return result;
+ });
  on('classic.PostToolUse',async($,e,next)=>{await activate($);await toolFinished($,e);return next(e);});
  on('classic.PostToolUseFailure',async($,e,next)=>{await activate($);await toolFinished($,e);return next(e);});
  on('classic.PermissionDenied',async($,e,next)=>{await activate($);await toolFinished($,e);return next(e);});
@@ -180,5 +234,5 @@ export function register(on){
  if(layout.timerText)children.push(Box({width:7,height:4,children:[Text({wrap:'truncate',children:['  '+layout.timerText]})]}));
  return Box({key:'focus-cat-band',height:4,width:layout.columns,flexDirection:'row',flexShrink:0,children});
  });
- on('session.end',async($,e,next)=>{if(initialized&&enabled){const t=identity();interruptTimerUpdates();if(await ownsRuntime($,t)){stopDance(cat);cat.completionEligible=false;cat.active=false;cat.waiting.clear();cat.tools.clear();await updateTimer($,(state,now)=>act(state,'pause',now),t);await persistCat($);}}return next(e);});
+ on('session.end',async($,e,next)=>{if(initialized&&enabled){const t=identity();interruptTimerUpdates();if(await ownsRuntime($,t)){stopDance(cat);cat.completionEligible=false;cat.active=false;clearCalls();await updateTimer($,(state,now)=>act(state,'pause',now),t);await persistCat($);}}return next(e);});
 }
