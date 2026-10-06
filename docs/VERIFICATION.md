@@ -1,6 +1,6 @@
 # Verification scope — 0.6.0
 
-The original public 0.6.0 archive passed 85 isolated tests. The current source includes the timer-storage concurrency fix and passes 92 isolated tests on Claude Code 2.1.289 and Bun 1.4.2: 30 official SDK tests and 62 Bun tests, zero failures. Strict validation passed with zero errors/warnings. Test stores, sessions and tool calls use synthetic data; no installed user Mod or user timer records were changed.
+The original public 0.6.0 archive passed 85 isolated tests. The current source includes the timer-storage concurrency fix and passes 101 isolated tests on Claude Code 2.1.289 and Bun 1.4.2: 32 official SDK tests and 69 Bun tests, zero failures. Strict validation passed with zero errors/warnings. Test stores, sessions and tool calls use synthetic data; no installed user Mod or user timer records were changed.
 
 | Existing test group | Passed | Scope |
 | --- | --- | --- |
@@ -11,10 +11,10 @@ The original public 0.6.0 archive passed 85 isolated tests. The current source i
 | character selection | 13 | A/B persistence, preference merging and timer isolation |
 | pixel core | 15 | PNG oracle, transparency, clipping, walking and boundary turns |
 | dance core | 16 | Fixed face/anchor, eight timing slots, offsets, freeze and 960ms finish |
-| timer concurrency | 5 | Overlapping tick/pause/reset/hide, reload, CAS retry and failure reporting |
-| timer storage SDK | 2 | Rejected versioned writes and subsequent recovery |
+| timer concurrency | 12 | Overlapping tick/pause/reset/hide, reload, CAS retry, rejected-command isolation and partial-commit recovery |
+| timer storage SDK | 4 | Rejected writes, safe next retry and ownership loss after a timer commit |
 
-Runtime entry SHA256: 009261b18fe75aec097757c8f8078308e0c6479aebbaa0b78d81d6c87140c6ba. Timer core SHA256: b964907742df9c9ee1fb04272675e044355058fe2618fe3f6a84c748d54560a0. The timer core and pixel assets are unchanged; the integration serializes timer mutations and storage, checks conditional-write results, and discards obsolete queued work at session boundaries.
+Runtime entry SHA256: c5f6238d907a3f2153ba65110a0d05b0af9c25c76d5626696515e0ef0852ba03. Timer core SHA256: b964907742df9c9ee1fb04272675e044355058fe2618fe3f6a84c748d54560a0. The timer core and pixel assets are unchanged; the integration serializes timer mutations and storage, checks conditional-write results, and discards obsolete queued work at session boundaries. Timer commands stage changes until the host accepts them; rejected writes leave the local timer unchanged. If the host committed a change but later persistence fails, the command preserves that change and asks the user to check status before retrying.
 
 preview/simulated-events-native-raster.png and .gif are actual native Terminal crops, at half Retina backing size, driven by simulated local lifecycle events. They show walking, edge turns, approval hold, resume, a completion dance and static rest. The GIF band is 499×128 and replays a 15.2s demonstration; production dance runs once. Capture sampling is 200ms and does not represent every 120ms dance frame. Asset regeneration and existing core tests cover all eight frames.
 
