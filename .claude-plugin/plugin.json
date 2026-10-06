@@ -1,0 +1,10 @@
+{
+  "name": "focus-cat-companion",
+  "version": "0.6.0",
+  "description": "Four-row original pixel cats: walking, approval hold, one-shot reply dance and independent local pomodoro",
+  "author": {
+    "name": "이서영"
+  },
+  "license": "MIT",
+  "types": "./types/runtime.d.ts"
+}

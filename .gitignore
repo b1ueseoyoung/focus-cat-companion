@@ -1,0 +1,6 @@
+.DS_Store
+*.log
+__pycache__/
+.claude/
+.claude-plugin/types/
+.local-checks/

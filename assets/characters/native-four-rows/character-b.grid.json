@@ -1,0 +1,109 @@
+{
+  "width": 8,
+  "height": 8,
+  "pixelFormat": "RGBA",
+  "anchor": [
+    4,
+    7
+  ],
+  "terminalRows": 4,
+  "terminalColumns": 8,
+  "palette": {
+    "cream": "#FFF3D8",
+    "shadow": "#E9D6BB",
+    "apricot": "#E3B18C",
+    "ginger": "#BC876A",
+    "ink": "#725A4C",
+    "blush": "#DFA49A",
+    "highlight": "#FFFFFF"
+  },
+  "pixels": [
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      "#BC876A",
+      "#BC876A",
+      null,
+      null,
+      "#E3B18C",
+      null,
+      null
+    ],
+    [
+      null,
+      "#BC876A",
+      "#FFF3D8",
+      "#E3B18C",
+      "#FFF3D8",
+      "#E9D6BB",
+      null,
+      null
+    ],
+    [
+      null,
+      "#FFF3D8",
+      "#725A4C",
+      "#FFF3D8",
+      "#FFF3D8",
+      "#725A4C",
+      "#BC876A",
+      null
+    ],
+    [
+      null,
+      "#FFF3D8",
+      "#FFF3D8",
+      "#FFF3D8",
+      "#FFF3D8",
+      "#FFF3D8",
+      "#BC876A",
+      null
+    ],
+    [
+      null,
+      null,
+      "#E9D6BB",
+      "#FFF3D8",
+      "#E9D6BB",
+      "#E9D6BB",
+      "#FFF3D8",
+      null
+    ],
+    [
+      null,
+      null,
+      "#BC876A",
+      "#BC876A",
+      "#FFF3D8",
+      "#FFF3D8",
+      "#FFF3D8",
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      "#BC876A",
+      null,
+      "#BC876A",
+      null,
+      null
+    ]
+  ],
+  "state": "hold",
+  "frameIndex": 0,
+  "origin": "Direct integer-pixel edits of the approved 8x8 raster",
+  "externalAssetsUsed": false,
+  "imageGenerationUsed": false,
+  "spriteGenUsed": false,
+  "antialiasing": false
+}

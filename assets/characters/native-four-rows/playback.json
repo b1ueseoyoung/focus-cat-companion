@@ -1,0 +1,375 @@
+{
+  "schemaVersion": 1,
+  "width": 8,
+  "height": 8,
+  "pixelFormat": "RGBA",
+  "terminalRows": 4,
+  "terminalColumns": 8,
+  "transparent": true,
+  "anchor": [
+    4,
+    7
+  ],
+  "sourceAspectChanged": false,
+  "generatedBy": "scripts/build-native-four-row-frames.py",
+  "externalAssetsUsed": false,
+  "imageGenerationUsed": false,
+  "spriteGenUsed": false,
+  "restBlinkRepresented": false,
+  "restNote": "Both rest frames preserve the open-eye raster. The one-pixel eyes cannot retain their identity while depicting a closed lid.",
+  "pauseBehavior": "Freeze the currently displayed frame; do not advance to the separate static hold pose on pause",
+  "previewLimit": "Raster asset previews only; not evidence of native terminal or actual model-turn behavior",
+  "characters": {
+    "a": {
+      "canonicalHold": {
+        "png": "character-a.png",
+        "grid": "character-a.grid.json"
+      },
+      "approvedEightPixelReference": "size-a-8.png",
+      "referenceSha256": "029cb6efe136e2b314e0f98f46e1b0133a44820783ec3c664a6429f862e38c6d",
+      "holdSha256": "029cb6efe136e2b314e0f98f46e1b0133a44820783ec3c664a6429f862e38c6d",
+      "palette": {
+        "outline": "#9B6C51",
+        "ginger": "#D99C70",
+        "light": "#EBB78D",
+        "cream": "#FFF1D5",
+        "creamShadow": "#E8D1AD",
+        "eye": "#665044",
+        "nose": "#CA8F87",
+        "blush": "#E8AE9C",
+        "white": "#FFFAEE"
+      },
+      "anchor": [
+        4,
+        7
+      ],
+      "nativeEdits": [],
+      "approvedAUnchanged": true,
+      "states": {
+        "walk": {
+          "frames": [
+            {
+              "png": "character-a-walk-00.png",
+              "grid": "character-a-walk-00.grid.json"
+            },
+            {
+              "png": "character-a-walk-01.png",
+              "grid": "character-a-walk-01.grid.json"
+            },
+            {
+              "png": "character-a-walk-02.png",
+              "grid": "character-a-walk-02.grid.json"
+            },
+            {
+              "png": "character-a-walk-03.png",
+              "grid": "character-a-walk-03.grid.json"
+            }
+          ],
+          "durationsMs": [
+            240,
+            240,
+            240,
+            240
+          ],
+          "loop": true,
+          "static": false,
+          "anchor": [
+            4,
+            7
+          ],
+          "freezeOnPause": true
+        },
+        "rest": {
+          "frames": [
+            {
+              "png": "character-a-rest-00.png",
+              "grid": "character-a-rest-00.grid.json"
+            },
+            {
+              "png": "character-a-rest-01.png",
+              "grid": "character-a-rest-01.grid.json"
+            }
+          ],
+          "durationsMs": [
+            0,
+            0
+          ],
+          "loop": false,
+          "static": true,
+          "anchor": [
+            4,
+            7
+          ],
+          "freezeOnPause": true
+        },
+        "hold": {
+          "frames": [
+            {
+              "png": "character-a-hold-00.png",
+              "grid": "character-a-hold-00.grid.json"
+            }
+          ],
+          "durationsMs": [
+            0
+          ],
+          "loop": false,
+          "static": true,
+          "anchor": [
+            4,
+            7
+          ],
+          "freezeOnPause": true
+        },
+        "dance": {
+          "frames": [
+            {
+              "png": "character-a-dance-00.png",
+              "grid": "character-a-dance-00.grid.json"
+            },
+            {
+              "png": "character-a-dance-01.png",
+              "grid": "character-a-dance-01.grid.json"
+            },
+            {
+              "png": "character-a-dance-02.png",
+              "grid": "character-a-dance-02.grid.json"
+            },
+            {
+              "png": "character-a-dance-03.png",
+              "grid": "character-a-dance-03.grid.json"
+            },
+            {
+              "png": "character-a-dance-04.png",
+              "grid": "character-a-dance-04.grid.json"
+            },
+            {
+              "png": "character-a-dance-05.png",
+              "grid": "character-a-dance-05.grid.json"
+            },
+            {
+              "png": "character-a-dance-06.png",
+              "grid": "character-a-dance-06.grid.json"
+            },
+            {
+              "png": "character-a-dance-07.png",
+              "grid": "character-a-dance-07.grid.json"
+            }
+          ],
+          "durationsMs": [
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120
+          ],
+          "loop": false,
+          "static": false,
+          "anchor": [
+            4,
+            7
+          ],
+          "freezeOnPause": true,
+          "oneShot": true,
+          "durationMs": 960,
+          "normalReplyCompletionOnly": true,
+          "protectedPixelRows": [
+            0,
+            4
+          ],
+          "limit": "Bob affects lower torso and paws; face stays fixed",
+          "horizontalOffsetIncluded": false
+        }
+      }
+    },
+    "b": {
+      "canonicalHold": {
+        "png": "character-b.png",
+        "grid": "character-b.grid.json"
+      },
+      "approvedEightPixelReference": "size-b-8.png",
+      "referenceSha256": "5890c7256b6761a2c404aa8aaaad1f532d733cff5a092a939c04a9e18c529a46",
+      "holdSha256": "db094d4b489451cf5c578c9160dc3cb30429e0abf29575fb599c646d5a7027f1",
+      "palette": {
+        "cream": "#FFF3D8",
+        "shadow": "#E9D6BB",
+        "apricot": "#E3B18C",
+        "ginger": "#BC876A",
+        "ink": "#725A4C",
+        "blush": "#DFA49A",
+        "highlight": "#FFFFFF"
+      },
+      "anchor": [
+        4,
+        7
+      ],
+      "nativeEdits": [
+        {
+          "x": 2,
+          "y": 3,
+          "color": "#725A4C",
+          "purpose": "restore separated dark eye"
+        },
+        {
+          "x": 5,
+          "y": 3,
+          "color": "#725A4C",
+          "purpose": "restore separated dark eye"
+        },
+        {
+          "x": 3,
+          "y": 7,
+          "color": "#BC876A",
+          "purpose": "align foot floor to y=7"
+        },
+        {
+          "x": 5,
+          "y": 7,
+          "color": "#BC876A",
+          "purpose": "align foot floor to y=7"
+        }
+      ],
+      "approvedAUnchanged": false,
+      "states": {
+        "walk": {
+          "frames": [
+            {
+              "png": "character-b-walk-00.png",
+              "grid": "character-b-walk-00.grid.json"
+            },
+            {
+              "png": "character-b-walk-01.png",
+              "grid": "character-b-walk-01.grid.json"
+            },
+            {
+              "png": "character-b-walk-02.png",
+              "grid": "character-b-walk-02.grid.json"
+            },
+            {
+              "png": "character-b-walk-03.png",
+              "grid": "character-b-walk-03.grid.json"
+            }
+          ],
+          "durationsMs": [
+            240,
+            240,
+            240,
+            240
+          ],
+          "loop": true,
+          "static": false,
+          "anchor": [
+            4,
+            7
+          ],
+          "freezeOnPause": true
+        },
+        "rest": {
+          "frames": [
+            {
+              "png": "character-b-rest-00.png",
+              "grid": "character-b-rest-00.grid.json"
+            },
+            {
+              "png": "character-b-rest-01.png",
+              "grid": "character-b-rest-01.grid.json"
+            }
+          ],
+          "durationsMs": [
+            0,
+            0
+          ],
+          "loop": false,
+          "static": true,
+          "anchor": [
+            4,
+            7
+          ],
+          "freezeOnPause": true
+        },
+        "hold": {
+          "frames": [
+            {
+              "png": "character-b-hold-00.png",
+              "grid": "character-b-hold-00.grid.json"
+            }
+          ],
+          "durationsMs": [
+            0
+          ],
+          "loop": false,
+          "static": true,
+          "anchor": [
+            4,
+            7
+          ],
+          "freezeOnPause": true
+        },
+        "dance": {
+          "frames": [
+            {
+              "png": "character-b-dance-00.png",
+              "grid": "character-b-dance-00.grid.json"
+            },
+            {
+              "png": "character-b-dance-01.png",
+              "grid": "character-b-dance-01.grid.json"
+            },
+            {
+              "png": "character-b-dance-02.png",
+              "grid": "character-b-dance-02.grid.json"
+            },
+            {
+              "png": "character-b-dance-03.png",
+              "grid": "character-b-dance-03.grid.json"
+            },
+            {
+              "png": "character-b-dance-04.png",
+              "grid": "character-b-dance-04.grid.json"
+            },
+            {
+              "png": "character-b-dance-05.png",
+              "grid": "character-b-dance-05.grid.json"
+            },
+            {
+              "png": "character-b-dance-06.png",
+              "grid": "character-b-dance-06.grid.json"
+            },
+            {
+              "png": "character-b-dance-07.png",
+              "grid": "character-b-dance-07.grid.json"
+            }
+          ],
+          "durationsMs": [
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120
+          ],
+          "loop": false,
+          "static": false,
+          "anchor": [
+            4,
+            7
+          ],
+          "freezeOnPause": true,
+          "oneShot": true,
+          "durationMs": 960,
+          "normalReplyCompletionOnly": true,
+          "protectedPixelRows": [
+            0,
+            4
+          ],
+          "limit": "Bob affects lower torso and paws; face stays fixed",
+          "horizontalOffsetIncluded": false
+        }
+      }
+    }
+  }
+}

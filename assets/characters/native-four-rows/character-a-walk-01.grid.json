@@ -1,0 +1,111 @@
+{
+  "width": 8,
+  "height": 8,
+  "pixelFormat": "RGBA",
+  "anchor": [
+    4,
+    7
+  ],
+  "terminalRows": 4,
+  "terminalColumns": 8,
+  "palette": {
+    "outline": "#9B6C51",
+    "ginger": "#D99C70",
+    "light": "#EBB78D",
+    "cream": "#FFF1D5",
+    "creamShadow": "#E8D1AD",
+    "eye": "#665044",
+    "nose": "#CA8F87",
+    "blush": "#E8AE9C",
+    "white": "#FFFAEE"
+  },
+  "pixels": [
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      "#9B6C51",
+      null
+    ],
+    [
+      null,
+      "#9B6C51",
+      "#9B6C51",
+      "#EBB78D",
+      "#EBB78D",
+      "#9B6C51",
+      "#9B6C51",
+      null
+    ],
+    [
+      null,
+      "#9B6C51",
+      "#D99C70",
+      "#D99C70",
+      "#D99C70",
+      "#D99C70",
+      "#9B6C51",
+      null
+    ],
+    [
+      null,
+      "#EBB78D",
+      "#665044",
+      "#FFF1D5",
+      "#FFF1D5",
+      "#665044",
+      "#EBB78D",
+      null
+    ],
+    [
+      null,
+      null,
+      "#FFF1D5",
+      "#FFF1D5",
+      "#FFF1D5",
+      "#FFF1D5",
+      "#9B6C51",
+      null
+    ],
+    [
+      null,
+      null,
+      "#9B6C51",
+      "#FFF1D5",
+      "#FFF1D5",
+      "#D99C70",
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      "#FFF1D5",
+      "#FFF1D5",
+      "#9B6C51",
+      "#D99C70",
+      "#9B6C51"
+    ],
+    [
+      null,
+      null,
+      "#9B6C51",
+      null,
+      null,
+      "#9B6C51",
+      null,
+      null
+    ]
+  ],
+  "state": "walk",
+  "frameIndex": 1,
+  "origin": "Direct integer-pixel edits of the approved 8x8 raster",
+  "externalAssetsUsed": false,
+  "imageGenerationUsed": false,
+  "spriteGenUsed": false,
+  "antialiasing": false
+}

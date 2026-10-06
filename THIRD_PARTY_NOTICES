@@ -1,0 +1,14 @@
+focus-cat-companion 0.6.0
+
+Included code, handwritten state declarations, original A/B pixel grids/PNGs,
+four-row walk/hold/rest/dance frames and embedded Raster data are directly
+authored project material. MIT. Copyright (c) 2026 이서영. See LICENSE.
+
+Cropped terminal previews use actual Raster rendering with simulated local
+events and an in-memory demo timer. No real model-turn behavior is claimed.
+
+No sprite-gen, image generation, external character provider or third-party
+sprite is used. External tools are not redistributed: Anthropic Claude Code
+and its testing API, Bun, Python and Pillow. Each retains its own terms.
+No tool binary, generated SDK, font, vendor tree or copied tool license text
+is bundled. See docs/ASSET_PROVENANCE.md and docs/DEPENDENCIES.md.
