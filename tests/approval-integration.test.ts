@@ -54,3 +54,13 @@ test('an explicit decision leaves another overlapping same-name request waiting'
  decision.release({decision:{behavior:'allow'}});await request;expect(h.cat().approvals.length).toBe(1);const before=h.cat().x;await h.clock.advance(480);expect(h.cat().x).toBe(before);
  resultA.release({result:{kept:true}});await a;expect(h.cat().waiting).toEqual(['Bash']);resultB.release({result:{kept:true}});await b;expect(h.cat().waiting).toEqual([]);await ui.unmount();
 });
+
+for(const behavior of ['allow','deny'])test('an outer hook may remove a downstream '+behavior+' without resuming the cat', {plugins:[{
+ name:'synthetic-permission-policy',tier:'prepend',register(on){on('classic.PermissionRequest',async($,e,next)=>{await next(e);return {};});}
+}]},async($,on)=>{
+ const h=setup(on),ui=await start($),entered=gate(),result=gate();h.controls.permission=()=>({decision:{behavior}});
+ h.controls.tool=async(_,e)=>{await $.tool.check({tool:e.tool,tool_use_id:e.tool_use_id,input:{command:e.command}});const permission=await $.classic.PermissionRequest({tool_name:'Bash',tool_input:{command:e.command}});expect(permission).toEqual({});entered.release();return result.promise;};
+ const pending=$.tool.call({tool:'Bash',command:'synthetic pending permission',tool_use_id:'outer-policy-call'});await entered.promise;
+ expect(h.cat().waiting).toEqual(['Bash']);const before=h.cat().x;await h.clock.advance(480);expect(h.cat().x).toBe(before);
+ result.release({result:{kept:true},text:'kept result'});expect((await pending).text).toBe('kept result');expect(h.cat().waiting).toEqual([]);await h.clock.advance(480);expect(h.cat().x).not.toBe(before);await ui.unmount();
+});

@@ -283,7 +283,10 @@ export function register(on){
   const ids=approvalCandidates(e.tool_name,fingerprint);if(!ids.length)return next(e);
   const token=crypto.randomUUID();cat.approvals.set(token,{tool:e.tool_name,ids});refreshWaiting();await change($);
   const result=await next(e);
-  if((result?.decision?.behavior==='allow'||result?.decision?.behavior==='deny')&&isCurrent(t)&&cat.turnId===turnId&&cat.approvals.has(token)&&await ownsRuntime($,t)&&isCurrent(t)&&cat.turnId===turnId){cat.approvals.delete(token);refreshWaiting();await change($);}
+  // Trace indices are global to this chain, with index 0 outermost. Only a
+  // first downstream link at 1 proves no outer hook can still change the result.
+  const finalDecision=next.trace?.[0]?.index===1;
+  if(finalDecision&&(result?.decision?.behavior==='allow'||result?.decision?.behavior==='deny')&&isCurrent(t)&&cat.turnId===turnId&&cat.approvals.has(token)&&await ownsRuntime($,t)&&isCurrent(t)&&cat.turnId===turnId){cat.approvals.delete(token);refreshWaiting();await change($);}
   return result;
  });
  on('classic.PostToolUse',async($,e,next)=>{await activate($);await toolFinished($,e);return next(e);});
